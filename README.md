@@ -8,7 +8,7 @@ sdk_version: "4.44.0"
 app_file: app.py
 pinned: false
 license: mit
-short_description: RL agent dies → LLM distills rule → Explorer navigates safely
+short_description: RL fails → LLM distills rule → Explorer navigates
 ---
 
 # 🧠 Hybrid RL → LLM → Explorer
