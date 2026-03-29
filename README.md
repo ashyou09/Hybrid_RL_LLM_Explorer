@@ -55,7 +55,7 @@ A research demonstration of **cross-agent knowledge transfer** — an RL agent l
 
 ```bash
 # 1. Clone
-git clone https://huggingface.co/spaces/YOUR_USERNAME/hybrid-rl-llm-explorer
+git clone https://huggingface.co/spaces/ashyou09/hybrid-rl-llm-explorer
 cd hybrid-rl-llm-explorer
 
 # 2. Install dependencies
