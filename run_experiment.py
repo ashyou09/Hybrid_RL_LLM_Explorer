@@ -1,5 +1,6 @@
 """
 run_experiment.py — Main Orchestrator (Side-by-Side Display)
+
 =============================================================
 Single pygame window: game on the LEFT, coloured log on the RIGHT.
 
@@ -13,6 +14,7 @@ ChromaDB is wiped at both start AND end so every run is pristine.
 """
 
 import shutil
+import time
 import gymnasium as gym
 import environments                          # registers custom rooms
 from rl_core           import DQNAgent, preprocess_obs
@@ -113,35 +115,48 @@ def run_learning_phase(env_name, agent, memory):
 #  Phase 3: Final Exam
 # ──────────────────────────────────────────────────────────
 
+FINAL_EXAM_SECS = 50    # how long Phase 3 runs (wall-clock seconds)
+
 def run_final_exam(env_name, memory):
-    env = gym.make(env_name, render_mode="rgb_array")
-    explorer = OnlineExplorerAgent(memory)
+    """Run Phase 3 for FINAL_EXAM_SECS wall-clock seconds, resetting on each episode end."""
     display.set_phase("PHASE 3 — FINAL EXAM")
 
     print(f"\n{'═'*50}")
     print(f"  PHASE 3 — FINAL EXAM: {env_name}")
+    print(f"  Running for {FINAL_EXAM_SECS} seconds…")
     print(f"{'═'*50}")
 
-    obs = env.reset()[0]
-    display.render_frame(env.render())
-    display.wait(0.22)
+    deadline = time.time() + FINAL_EXAM_SECS
+    episode  = 0
 
-    for step in range(200):
-        display.wait(0.22)
-        action = explorer.act(env, obs)
-        obs, reward, terminated, truncated, _ = env.step(action)
+    while time.time() < deadline:
+        episode += 1
+        env      = gym.make(env_name, render_mode="rgb_array")
+        explorer = OnlineExplorerAgent(memory)
+        obs      = env.reset()[0]
         display.render_frame(env.render())
+        print(f"\n  [Phase 3] Episode {episode} starting…")
 
-        if reward <= -10:
-            print("\n  [Agent C] FAILED — stepped into a hazard.")
-            break
-        if reward >= 10:
-            print(f"\n  [\033[92m✓ FLAWLESS SUCCESS\033[0m] Goal reached in {step} steps!")
-            break
-        if terminated or truncated:
-            break
+        step = 0
+        while time.time() < deadline:
+            display.wait(0.22)
+            action = explorer.act(env, obs)
+            obs, reward, terminated, truncated, _ = env.step(action)
+            display.render_frame(env.render())
+            step += 1
 
-    env.close()
+            if reward <= -10:
+                print(f"  [Agent C] Episode {episode} FAILED — stepped into a hazard after {step} steps.")
+                break
+            if reward >= 10:
+                print(f"  [\033[92m✓ FLAWLESS SUCCESS\033[0m] Episode {episode} goal reached in {step} steps!")
+                break
+            if terminated or truncated:
+                break
+
+        env.close()
+
+    print(f"\n  [Phase 3] 50-second showcase complete — {episode} episode(s) played.")
 
 
 # ──────────────────────────────────────────────────────────

@@ -167,7 +167,6 @@ def start_and_stream():
 
     _running = True
     _log_html_lines = []
-    shutil.rmtree("./chroma_db", ignore_errors=True)
 
     # drain old queues
     while not LOG_Q.empty():
@@ -219,7 +218,7 @@ def start_and_stream():
 
         if not got_log:
             idle_ticks += 1
-            if idle_ticks > 30 and not _running:
+            if idle_ticks > 60 and not _running:
                 break
         else:
             idle_ticks = 0

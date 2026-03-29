@@ -15,23 +15,30 @@ class MemoryHub:
     """Persistent vector store that bridges RL knowledge → symbolic planners."""
 
     def __init__(self, db_path="./chroma_db", model_name="all-MiniLM-L6-v2"):
-        self.client = chromadb.PersistentClient(path=db_path)
+        # Delete any leftover data on disk first
+        import shutil, os
+        shutil.rmtree(db_path, ignore_errors=True)
+        os.makedirs(db_path, exist_ok=True)
 
-        # Always start clean so previous runs don't leak rules
-        try:
-            self.client.delete_collection(name="semantic_rules")
-        except Exception:
-            pass
+        # Fresh client — no stale in-memory collection state
+        self.client = chromadb.PersistentClient(path=db_path)
 
         self.embed_fn = embedding_functions.SentenceTransformerEmbeddingFunction(
             model_name=model_name
         )
-        self.collection = self.client.create_collection(
+        # get_or_create is safe even if a previous run left something behind
+        self.collection = self.client.get_or_create_collection(
             name="semantic_rules",
             embedding_function=self.embed_fn,
-            metadata={"hnsw:space": "cosine"},   # cosine similarity index
+            metadata={"hnsw:space": "cosine"},
         )
-        print("[Memory Hub] Initialized ChromaDB Vector Store.")
+        # Wipe any docs from a previous partial run that shared the same path
+        existing = self.collection.count()
+        if existing > 0:
+            all_ids = self.collection.get()["ids"]
+            self.collection.delete(ids=all_ids)
+
+        print("[Memory Hub] Initialized ChromaDB Vector Store (clean slate).")
 
     # ── store a new rule ──
 
