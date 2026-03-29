@@ -12,16 +12,22 @@ from chromadb.utils import embedding_functions
 
 
 class MemoryHub:
-    """In-memory vector store that bridges RL knowledge → symbolic planners.
+    """Vector store that bridges RL knowledge → symbolic planners.
 
-    Uses EphemeralClient so every instantiation is a guaranteed clean slate —
-    no disk state, no shared-singleton issues, no collection-already-exists errors.
+    Uses PersistentClient at /tmp/chroma_db — the /tmp directory is always
+    writable on HF Spaces (unlike /app).  A full rmtree before each init
+    guarantees a clean slate with no stale collections.
     """
 
+    DB_PATH = "/tmp/chroma_db"
+
     def __init__(self, model_name="all-MiniLM-L6-v2"):
-        # EphemeralClient = pure in-memory, dies with the process.
-        # Guaranteed fresh every time — perfect for HF Spaces re-runs.
-        self.client = chromadb.EphemeralClient()
+        import shutil, os
+        # Nuke any leftover data from previous runs
+        shutil.rmtree(self.DB_PATH, ignore_errors=True)
+        os.makedirs(self.DB_PATH, exist_ok=True)
+
+        self.client = chromadb.PersistentClient(path=self.DB_PATH)
 
         self.embed_fn = embedding_functions.SentenceTransformerEmbeddingFunction(
             model_name=model_name
@@ -31,7 +37,7 @@ class MemoryHub:
             embedding_function=self.embed_fn,
             metadata={"hnsw:space": "cosine"},
         )
-        print("[Memory Hub] Initialized ChromaDB Vector Store (ephemeral, clean slate).")
+        print("[Memory Hub] Initialized ChromaDB Vector Store (/tmp, clean slate).")
 
     # ── store a new rule ──
 
