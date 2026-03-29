@@ -232,7 +232,9 @@ Look at tile ahead
 
 ### 3.2 Phase 1 — Learning about Lava
 
-![Phase 1 Lava Room Exploration](assets/rl_lava.png)
+<div align="center">
+  <img src="assets/rl_lava.png" width="800" alt="Phase 1 Lava Room Exploration" />
+</div>
 
 ```
 Step 1.  RL Agent spawns in Lava Room (7×7, red lava barrier)
@@ -254,17 +256,23 @@ Step 9.  TRUTH CONFIRMATION:
          Navigates to goal → no deaths → rule validated.
 ```
 
-![Truth Confirmation - Lava Room](assets/truth_lava.png)
+<div align="center">
+  <img src="assets/truth_lava.png" width="800" alt="Truth Confirmation - Lava Room" />
+</div>
 
 ### 3.3 Phase 2 — Learning about Sand
 
 Identical procedure in Sand Room. The LLM generates a rule about sand (or lava generally). Both rules now coexist in ChromaDB as independent vectors.
 
-![Phase 2 Sand Room Exploration](assets/rl_sand.png)
+<div align="center">
+  <img src="assets/rl_sand.png" width="800" alt="Phase 2 Sand Room Exploration" />
+</div>
 
 ### 3.4 Phase 3 — Final Exam (Zero-Shot Transfer)
 
-![Final Exam - Combined Maze](assets/phase3_combined.png)
+<div align="center">
+  <img src="assets/phase3_combined.png" width="800" alt="Final Exam - Combined Maze" />
+</div>
 
 ```
 Step 1.  Rule-Guided Explorer spawns in 9×9 Combined Room (never seen before)
