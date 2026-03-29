@@ -267,6 +267,10 @@ Identical procedure in Sand Room. The LLM generates a rule about sand (or lava g
 <div align="center">
   <img src="assets/rl_sand.png" width="800" alt="Phase 2 Sand Room Exploration" />
 </div>
+<br>
+<div align="center">
+  <img src="assets/truth_sand.png" width="800" alt="Truth Confirmation - Sand Room" />
+</div>
 
 ### 3.4 Phase 3 — Final Exam (Zero-Shot Transfer)
 
