@@ -11,14 +11,30 @@ license: mit
 short_description: RL fails → LLM distills rule → Explorer navigates
 ---
 
-# Exp-1: Hybrid RL → LLM → Rule-Guided Explorer
-## Semantic Safety Transfer via Vector-Embedded LLM Rules
+<div align="center">
+
+# 🧠 Hybrid RL → LLM → Explorer
+### Semantic Safety Rule Transfer via Vector DB
+
+[![Hugging Face Space](https://img.shields.io/badge/🤗%20Hugging%20Face-Live%20Demo-blue)](https://huggingface.co/spaces/ashyou09/hybrid-rl-llm-explorer)
+[![PyTorch](https://img.shields.io/badge/PyTorch-EE4C2C?logo=pytorch&logoColor=white)](https://pytorch.org/)
+[![Ollama](https://img.shields.io/badge/Ollama-llama3.2-black)](https://ollama.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 > **A Zero-Shot Knowledge Transfer Architecture Between Stochastic RL and a Rule-Guided Autonomous Agent**
 
+</div>
+
 ---
 
-## Abstract
+## ⚡ Quickstart: Try the Demo
+
+Don't want to install anything? Watch the Hybrid AI pipeline run live directly in your browser:
+👉 **[Launch Interactive Web Demo on Hugging Face](https://huggingface.co/spaces/ashyou09/hybrid-rl-llm-explorer)**
+
+---
+
+## 📖 Abstract
 
 We present a three-tier hybrid AI architecture that demonstrates **zero-shot semantic rule transfer** across fundamentally incompatible reasoning paradigms. A stochastic Reinforcement Learning agent (PyTorch DQN) explores hazardous grid environments, accumulates fatal experiences, and triggers a local Large Language Model (Ollama `llama3.2:3b`) to distil deaths into generalised natural-language safety rules. These rules are vectorised using SentenceTransformers (`all-MiniLM-L6-v2`) and stored in a ChromaDB cosine-similarity index.
 
@@ -28,7 +44,7 @@ We show that cosine similarity between text embeddings enables automatic general
 
 ---
 
-## 1. Introduction
+## 🔍 1. Introduction
 
 ### 1.1 The Problem
 
@@ -49,7 +65,7 @@ We propose an intermediate **semantic layer** — a Vector Database of natural-l
 
 ---
 
-## 2. System Architecture
+## 🏗️ 2. System Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -198,7 +214,7 @@ Look at tile ahead
 
 ---
 
-## 3. Experimental Procedure
+## 🧪 3. Experimental Procedure
 
 ### 3.1 Environment Specifications
 
@@ -256,7 +272,7 @@ Step 4.  Explorer reaches goal WITHOUT touching any hazard
 
 ---
 
-## 4. Results
+## 📊 4. Results
 
 ### 4.1 Sample Run Output
 
@@ -327,7 +343,7 @@ When the LLM generates a vague trigger like `"hazardous area"` instead of `"red 
 
 ---
 
-## 5. File Structure
+## 📁 5. File Structure
 
 ```
 game_Exp1/
@@ -356,7 +372,7 @@ game_Exp1/
 
 ---
 
-## 6. How to Run
+## 💻 6. How to Run
 
 ### Option A — Local (Full Experience with Live LLM)
 
@@ -404,7 +420,7 @@ https://huggingface.co/spaces/ashyou09/hybrid-rl-llm-explorer
 
 ---
 
-## 7. Contributions & Future Work
+## 🌟 7. Contributions & Future Work
 
 ### What This Experiment Proves
 
