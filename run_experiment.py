@@ -29,24 +29,36 @@ display = None   # global — set in __main__
 
 # ──────────────────────────────────────────────────────────
 #  Phase 1 & 2: RL exploration → LLM rule → Explorer validation
+#  Each phase always runs for LEARNING_PHASE_SECS wall-clock seconds.
 # ──────────────────────────────────────────────────────────
 
+LEARNING_PHASE_SECS = 30   # minimum wall-clock seconds per learning phase
+
 def run_learning_phase(env_name, agent, memory):
-    env = gym.make(env_name, render_mode="rgb_array")
     label = env_name.split("-")[1]
     display.set_phase(f"RL Exploration — {label}")
 
     print(f"\n{'─'*50}")
-    print(f"[Agent A] Entering {env_name}")
+    print(f"[Agent A] Entering {env_name}  ({LEARNING_PHASE_SECS}s)")
     print(f"{'─'*50}")
 
+    deadline = time.time() + LEARNING_PHASE_SECS
     deaths = 0
+    rule_data = None
+    trigger   = None
 
-    for episode in range(30):
+    # ── SUB-PHASE A: RL exploration until 2 deaths ──────────
+    env = gym.make(env_name, render_mode="rgb_array")
+    episode = 0
+
+    while deaths < 2 and time.time() < deadline:
+        episode += 1
         obs = env.reset()[0]
         display.render_frame(env.render())
 
         for step in range(100):
+            if time.time() >= deadline:
+                break
             state  = preprocess_obs(obs)
             action = agent.select_action(state)
             display.wait(0.22)
@@ -68,37 +80,9 @@ def run_learning_phase(env_name, agent, memory):
                     if rule_data and verify_rule(env, agent, rule_data):
                         memory.store_verified_rule(rule_data)
 
-                    env.close()
                     print(f"  [Agent A] Rule learned: {rule_data['rule']}")
-
-                    print(f"\n  ╔══════════════════════════════════════════════╗")
-                    print(f"  ║  TRUTH CONFIRMATION: Re-entering same room    ║")
-                    print(f"  ║  Verifying the LLM rule prevents real deaths  ║")
-                    print(f"  ╚══════════════════════════════════════════════╝")
-
-                    display.set_phase(f"Truth Confirmation — {label}")
-                    env = gym.make(env_name, render_mode="rgb_array")
-                    obs = env.reset()[0]
-                    display.render_frame(env.render())
-                    explorer = OnlineExplorerAgent(memory)
-
-                    for _ in range(300):
-                        display.wait(0.22)
-                        action = explorer.act(env, obs)
-                        obs, reward, terminated, truncated, _ = env.step(action)
-                        display.render_frame(env.render())
-
-                        if reward >= 10:
-                            print(f"\n  [\033[92m✓ TRUTH CONFIRMED\033[0m] Rule works — no deaths!")
-                            break
-                        if reward <= -10:
-                            print(f"\n  [\033[91m✗ TRUTH REFUTED\033[0m] Rule failed — agent died!")
-                            break
-                        if terminated or truncated:
-                            break
-
-                    env.close()
-                    return rule_data["trigger_feature"]
+                    trigger = rule_data["trigger_feature"]
+                    break
                 else:
                     print("  [Agent A] Respawning to confirm…")
                     break
@@ -108,7 +92,64 @@ def run_learning_phase(env_name, agent, memory):
                 break
 
     env.close()
-    return None
+
+    # ── SUB-PHASE B: Truth Confirmation (loop until deadline) ──
+    if rule_data and time.time() < deadline:
+        print(f"\n  ╔══════════════════════════════════════════════╗")
+        print(f"  ║  TRUTH CONFIRMATION: Re-entering same room    ║")
+        print(f"  ║  Verifying the LLM rule prevents real deaths  ║")
+        print(f"  ╚══════════════════════════════════════════════╝")
+
+        display.set_phase(f"Truth Confirmation — {label}")
+        ep = 0
+
+        while time.time() < deadline:
+            ep += 1
+            env = gym.make(env_name, render_mode="rgb_array")
+            obs = env.reset()[0]
+            display.render_frame(env.render())
+            explorer = OnlineExplorerAgent(memory)
+            print(f"  [Truth] Episode {ep} starting…")
+
+            while time.time() < deadline:
+                display.wait(0.22)
+                action = explorer.act(env, obs)
+                obs, reward, terminated, truncated, _ = env.step(action)
+                display.render_frame(env.render())
+
+                if reward >= 10:
+                    print(f"\n  [\033[92m✓ TRUTH CONFIRMED\033[0m] Rule works — no deaths!")
+                    break
+                if reward <= -10:
+                    print(f"\n  [\033[91m✗ TRUTH REFUTED\033[0m] Rule failed — agent died!")
+                    break
+                if terminated or truncated:
+                    break
+
+            env.close()
+
+    # If we haven't learned a rule yet but ran out of time, just
+    # keep exploring to fill the remaining seconds visually
+    elif not rule_data and time.time() < deadline:
+        env = gym.make(env_name, render_mode="rgb_array")
+        obs = env.reset()[0]
+        display.render_frame(env.render())
+        print("  [Agent A] Continuing exploration…")
+        while time.time() < deadline:
+            state  = preprocess_obs(obs)
+            action = agent.select_action(state)
+            display.wait(0.22)
+            obs, reward, terminated, truncated, _ = env.step(action)
+            display.render_frame(env.render())
+            if terminated or truncated:
+                obs = env.reset()[0]
+                display.render_frame(env.render())
+        env.close()
+
+    elapsed = LEARNING_PHASE_SECS - max(0, deadline - time.time())
+    print(f"  [{label}] Phase complete ({elapsed:.0f}s elapsed)")
+    return trigger
+
 
 
 # ──────────────────────────────────────────────────────────
