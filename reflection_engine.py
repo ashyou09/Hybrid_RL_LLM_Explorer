@@ -26,15 +26,16 @@ def analyze_failure_log(log_path="failure_log.json", model_name="llama3.2:3b"):
 
     # 2. Build the LLM prompt
     prompt = f"""You are an expert autonomous reasoning AI.
-An RL agent fatally failed in: {data['environment']}.
-Visual context before death: "{data['state_context']}"
-Fatal action: "{data['fatal_action']}".
+An RL agent took a fatal step and died in: {data['environment']}.
+Visual context right before the fatal action: "{data['state_context']}"
+Fatal action taken: "{data['fatal_action']}".
 
+Identify the exact hazard from the visual context that caused the death.
 Create a generalised semantic rule to prevent this failure in ANY environment.
 Output ONLY a JSON object with these keys:
-- "rule": A directive (e.g. "Never move forward when facing red lava")
-- "forbidden_action": One of ["Turn Left", "Turn Right", "Move Forward"]
-- "trigger_feature": 1‑3 word keyword (e.g. "red lava")
+- "rule": A short directive (e.g. "Do not move forward into sand")
+- "forbidden_action": Exact action that failed (must be "{data['fatal_action']}")
+- "trigger_feature": The exact 1-2 word name of the deadly object from the visual context (e.g. "red lava" or "sand"). Do NOT use vague terms like "solid boundary", "unexplored", or "empty space".
 """
 
     # 3. Call Ollama
