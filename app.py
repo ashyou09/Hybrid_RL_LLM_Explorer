@@ -112,10 +112,7 @@ def run_experiment_thread():
         disp.set_phase("PHASE 3 — Final Exam")
         exp_mod.run_final_exam("MiniGrid-CombinedTesting-v0", memory)
 
-        LOG_Q.put("─"*48)
-        LOG_Q.put("Experiment complete! Cleaning up…")
-        shutil.rmtree("./chroma_db", ignore_errors=True)
-        LOG_Q.put("Done. ✓")
+        LOG_Q.put("Experiment complete! ✓")
 
     except Exception as e:
         LOG_Q.put(f"[ERROR] {e}")

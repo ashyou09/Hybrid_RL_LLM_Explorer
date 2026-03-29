@@ -189,8 +189,6 @@ if __name__ == "__main__":
     display.set_phase("Done")
     display.wait(0.2)
 
-    print("\n[Cleanup] Deleting ChromaDB data…")
-    shutil.rmtree("./chroma_db", ignore_errors=True)
-    print("[Cleanup] Done. Next run starts from zero.\n")
+    print("[Done] Next run will start fresh automatically.\n")
 
     display.cleanup()

@@ -12,33 +12,26 @@ from chromadb.utils import embedding_functions
 
 
 class MemoryHub:
-    """Persistent vector store that bridges RL knowledge → symbolic planners."""
+    """In-memory vector store that bridges RL knowledge → symbolic planners.
 
-    def __init__(self, db_path="./chroma_db", model_name="all-MiniLM-L6-v2"):
-        # Delete any leftover data on disk first
-        import shutil, os
-        shutil.rmtree(db_path, ignore_errors=True)
-        os.makedirs(db_path, exist_ok=True)
+    Uses EphemeralClient so every instantiation is a guaranteed clean slate —
+    no disk state, no shared-singleton issues, no collection-already-exists errors.
+    """
 
-        # Fresh client — no stale in-memory collection state
-        self.client = chromadb.PersistentClient(path=db_path)
+    def __init__(self, model_name="all-MiniLM-L6-v2"):
+        # EphemeralClient = pure in-memory, dies with the process.
+        # Guaranteed fresh every time — perfect for HF Spaces re-runs.
+        self.client = chromadb.EphemeralClient()
 
         self.embed_fn = embedding_functions.SentenceTransformerEmbeddingFunction(
             model_name=model_name
         )
-        # get_or_create is safe even if a previous run left something behind
-        self.collection = self.client.get_or_create_collection(
+        self.collection = self.client.create_collection(
             name="semantic_rules",
             embedding_function=self.embed_fn,
             metadata={"hnsw:space": "cosine"},
         )
-        # Wipe any docs from a previous partial run that shared the same path
-        existing = self.collection.count()
-        if existing > 0:
-            all_ids = self.collection.get()["ids"]
-            self.collection.delete(ids=all_ids)
-
-        print("[Memory Hub] Initialized ChromaDB Vector Store (clean slate).")
+        print("[Memory Hub] Initialized ChromaDB Vector Store (ephemeral, clean slate).")
 
     # ── store a new rule ──
 
