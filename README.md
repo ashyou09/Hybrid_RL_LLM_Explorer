@@ -1,3 +1,17 @@
+---
+title: Hybrid RL LLM Explorer
+emoji: 🧠
+colorFrom: blue
+colorTo: purple
+sdk: gradio
+sdk_version: "5.23.3"
+python_version: "3.10"
+app_file: app.py
+pinned: false
+license: mit
+short_description: RL fails → LLM distills rule → Explorer navigates
+---
+
 <div align="center">
 
 # 🧠 Hybrid RL → LLM → Explorer
