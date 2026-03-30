@@ -156,21 +156,21 @@ def run_learning_phase(env_name, agent, memory):
 #  Phase 3: Final Exam
 # ──────────────────────────────────────────────────────────
 
-FINAL_EXAM_SECS = 50    # how long Phase 3 runs (wall-clock seconds)
+FINAL_EXAM_SECS = 120    # how long Phase 3 runs (wall-clock seconds)
 
 def run_final_exam(env_name, memory):
-    """Run Phase 3 for FINAL_EXAM_SECS wall-clock seconds, resetting on each episode end."""
+    """Run Phase 3 for up to FINAL_EXAM_SECS wall-clock seconds, max 2 episodes."""
     display.set_phase("PHASE 3 — FINAL EXAM")
 
     print(f"\n{'═'*50}")
     print(f"  PHASE 3 — FINAL EXAM: {env_name}")
-    print(f"  Running for {FINAL_EXAM_SECS} seconds…")
+    print(f"  Running for up to {FINAL_EXAM_SECS} seconds (max 2 episodes)…")
     print(f"{'═'*50}")
 
     deadline = time.time() + FINAL_EXAM_SECS
     episode  = 0
 
-    while time.time() < deadline:
+    while time.time() < deadline and episode < 2:
         episode += 1
         env      = gym.make(env_name, render_mode="rgb_array")
         explorer = OnlineExplorerAgent(memory)
@@ -197,7 +197,7 @@ def run_final_exam(env_name, memory):
 
         env.close()
 
-    print(f"\n  [Phase 3] 50-second showcase complete — {episode} episode(s) played.")
+    print(f"\n  [Phase 3] {FINAL_EXAM_SECS}-second showcase complete — {episode} episode(s) played.")
 
 
 # ──────────────────────────────────────────────────────────
