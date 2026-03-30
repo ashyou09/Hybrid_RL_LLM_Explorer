@@ -32,7 +32,7 @@ display = None   # global — set in __main__
 #  Each phase always runs for LEARNING_PHASE_SECS wall-clock seconds.
 # ──────────────────────────────────────────────────────────
 
-LEARNING_PHASE_SECS = 30   # minimum wall-clock seconds per learning phase
+LEARNING_PHASE_SECS = 60   # minimum wall-clock seconds per learning phase
 
 def run_learning_phase(env_name, agent, memory):
     label = env_name.split("-")[1]
