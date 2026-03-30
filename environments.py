@@ -51,14 +51,15 @@ class LavaRoomEnv(MiniGridEnv):
         self.put_obj(Goal(), width - 2, height - 2)
         self.agent_pos = (1, 1)
         self.agent_dir = 0
-        # Horizontal lava wall with a gap at column 3
+        # Horizontal lava barrier with one gap at column 3
         for i in range(1, width - 1):
-            if i == 1 or i == 3 or i == 5:
+            if i != 3:
                 self.grid.set(i, height // 2, Lava())
 
     def step(self, action):
         obs, reward, terminated, truncated, info = super().step(action)
         cell = self.grid.get(*self.agent_pos)
+        reward = -0.1  # time penalty
         if cell and cell.type == "lava" and cell.color == "red":
             reward, terminated = -10.0, True
         if cell and cell.type == "goal":
@@ -90,6 +91,7 @@ class QuicksandRoomEnv(MiniGridEnv):
     def step(self, action):
         obs, reward, terminated, truncated, info = super().step(action)
         cell = self.grid.get(*self.agent_pos)
+        reward = -0.1  # time penalty
         if cell and cell.type == "lava" and cell.color == "yellow":
             reward, terminated = -10.0, True
         if cell and cell.type == "goal":
@@ -129,13 +131,14 @@ class CombinedTestingEnv(MiniGridEnv):
         self.grid.set(k, 5, Quicksand())
         self.grid.set(6, k, Quicksand())
         self.grid.set(l, 4, Quicksand())
-        self.grid.set(l, 4, Quicksand())
         self.grid.set(7, 4, Quicksand())
+        self.grid.set(2, l, Quicksand())
         
 
     def step(self, action):
         obs, reward, terminated, truncated, info = super().step(action)
         cell = self.grid.get(*self.agent_pos)
+        reward = -0.1  # time penalty
         if cell and cell.type == "lava":
             reward, terminated = -10.0, True
         if cell and cell.type == "goal":

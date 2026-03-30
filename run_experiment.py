@@ -35,12 +35,18 @@ class ExperimentTiming:
 TIMING = ExperimentTiming()
 
 
+def _require_display():
+    if display is None:
+        raise RuntimeError("Display is not initialized.")
+
+
 # ──────────────────────────────────────────────────────────
 #  Phase 1 & 2: RL exploration → LLM rule → Explorer validation
 #  Each phase always runs for LEARNING_PHASE_SECS wall-clock seconds.
 # ──────────────────────────────────────────────────────────
 
 def run_learning_phase(env_name, agent, memory):
+    _require_display()
     label = env_name.split("-")[1]
     display.set_phase(f"RL Exploration — {label}")
 
@@ -83,11 +89,12 @@ def run_learning_phase(env_name, agent, memory):
                     display.set_phase(f"LLM Reflection — {label}")
                     rule_data = analyze_failure_log()
 
-                    if rule_data and verify_rule(env, agent, rule_data):
+                    if rule_data and verify_rule(rule_data):
                         memory.store_verified_rule(rule_data)
 
-                    print(f"  [Agent A] Rule learned: {rule_data['rule']}")
-                    trigger = rule_data["trigger_feature"]
+                    if rule_data:
+                        print(f"  [Agent A] Rule learned: {rule_data['rule']}")
+                        trigger = rule_data["trigger_feature"]
                     break
                 else:
                     print("  [Agent A] Respawning to confirm…")
@@ -164,6 +171,7 @@ def run_learning_phase(env_name, agent, memory):
 
 def run_final_exam(env_name, memory):
     """Run Phase 3 for up to TIMING.final_exam_secs wall-clock seconds."""
+    _require_display()
     display.set_phase("PHASE 3 — FINAL EXAM")
 
     print(f"\n{'═'*50}")
