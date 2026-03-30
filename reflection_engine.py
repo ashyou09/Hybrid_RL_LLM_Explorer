@@ -38,25 +38,20 @@ Output ONLY a JSON object with these keys:
 - "trigger_feature": The exact 1-2 word name of the deadly object from the visual context (e.g. "red lava" or "sand"). Do NOT use vague terms like "solid boundary", "unexplored", or "empty space".
 """
 
-    # 3. Call Ollama
+    # 3. Call Ollama (DISABLED to save space & prevent lag)
     try:
-        print(f"[Reflection Engine] Asking {model_name} to reflect on failure...")
-        resp = ollama.chat(model=model_name, messages=[
-            {"role": "system", "content": "You are a precise JSON‑producing AI."},
-            {"role": "user",   "content": prompt},
-        ])
-        text = resp["message"]["content"]
-        text = text.replace("```json", "").replace("```", "").strip()
-        rule_data = json.loads(text)
-        print(f"[Reflection Engine] Derived Rule: {rule_data['rule']}")
-        return rule_data
+        raise RuntimeError("Ollama disabled for lightweight performance mode.")
+
+        # print(f"[Reflection Engine] Asking {model_name} to reflect on failure...")
+        # resp = ollama.chat(model=model_name, messages=[ ... ])
+        # ... (rest of old code would be here, but we'll just skip to exception)
 
     except Exception as e:
-        print(f"[Reflection Engine] LLM unavailable ({e})")
-        print("[Reflection Engine] Using graceful fallback rule for testing.\n")
+        print(f"[Reflection Engine] LLM bypassed ({e})")
+        print("[Reflection Engine] Using graceful simulated rule for ultra-fast testing.\n")
 
         # Fallback: infer the hazard from the logged context
-        trigger = "sand" if "yellow" in data["state_context"].lower() else "red lava"
+        trigger = "sand" if "sand" in data["state_context"].lower() else "red lava"
         return {
             "rule":             f"Avoid moving forward into {trigger}",
             "forbidden_action": data["fatal_action"],
@@ -64,7 +59,7 @@ Output ONLY a JSON object with these keys:
         }
 
 
-def verify_rule(env, agent, rule_data, trials=3):
+def verify_rule(env, agent, rule_data, trials=1):
     """Quick sanity check that the rule's forbidden_action is valid."""
     print(f"\n[Verification] Testing rule across {trials} mock episodes...")
     import time

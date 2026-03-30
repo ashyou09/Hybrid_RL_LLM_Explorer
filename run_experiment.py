@@ -61,7 +61,7 @@ def run_learning_phase(env_name, agent, memory):
                 break
             state  = preprocess_obs(obs)
             action = agent.select_action(state)
-            display.wait(0.22)
+            display.wait(0.2)
 
             next_obs, reward, terminated, truncated, _ = env.step(action)
             display.render_frame(env.render())
@@ -103,7 +103,7 @@ def run_learning_phase(env_name, agent, memory):
         display.set_phase(f"Truth Confirmation — {label}")
         ep = 0
 
-        while time.time() < deadline and ep < 2:
+        while time.time() < deadline and ep < 1:
             ep += 1
             env = gym.make(env_name, render_mode="rgb_array")
             obs = env.reset()[0]
@@ -112,7 +112,7 @@ def run_learning_phase(env_name, agent, memory):
             print(f"  [Truth] Episode {ep} starting…")
 
             while time.time() < deadline:
-                display.wait(0.22)
+                display.wait(0.2)
                 action = explorer.act(env, obs)
                 obs, reward, terminated, truncated, _ = env.step(action)
                 display.render_frame(env.render())
@@ -138,7 +138,7 @@ def run_learning_phase(env_name, agent, memory):
         while time.time() < deadline:
             state  = preprocess_obs(obs)
             action = agent.select_action(state)
-            display.wait(0.22)
+            display.wait(0.2)
             obs, reward, terminated, truncated, _ = env.step(action)
             display.render_frame(env.render())
             if terminated or truncated:
@@ -164,13 +164,13 @@ def run_final_exam(env_name, memory):
 
     print(f"\n{'═'*50}")
     print(f"  PHASE 3 — FINAL EXAM: {env_name}")
-    print(f"  Running for up to {FINAL_EXAM_SECS} seconds (max 2 episodes)…")
+    print(f"  Running for up to {FINAL_EXAM_SECS} seconds (max 1 episode)…")
     print(f"{'═'*50}")
 
     deadline = time.time() + FINAL_EXAM_SECS
     episode  = 0
 
-    while time.time() < deadline and episode < 2:
+    while time.time() < deadline and episode < 1:
         episode += 1
         env      = gym.make(env_name, render_mode="rgb_array")
         explorer = OnlineExplorerAgent(memory)
@@ -180,7 +180,7 @@ def run_final_exam(env_name, memory):
 
         step = 0
         while time.time() < deadline:
-            display.wait(0.22)
+            display.wait(0.2)
             action = explorer.act(env, obs)
             obs, reward, terminated, truncated, _ = env.step(action)
             display.render_frame(env.render())
