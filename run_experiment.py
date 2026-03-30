@@ -27,7 +27,7 @@ display = None   # global — set in __main__
 
 @dataclass(frozen=True)
 class ExperimentTiming:
-    step_delay_secs: float = 0.25          # visual speed per env step
+    step_delay_secs: float = 0.18          # visual speed per env step
     learning_phase_secs: int = 40         # wall-clock seconds per learning phase
     final_exam_secs: int = 120             # wall-clock seconds for phase 3
     final_exam_max_episodes: int = 2       # how many phase 3 episodes at most

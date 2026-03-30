@@ -11,7 +11,6 @@ NOTE: Ollama is NOT available on HF Spaces infrastructure.
 """
 
 import queue
-import shutil
 import threading
 import time
 import re
@@ -27,6 +26,11 @@ LOG_Q   = queue.Queue()
 FRAME_Q = queue.Queue(maxsize=2)   # keep only latest frames
 
 ANSI_RE = re.compile(r'\x1b\[[0-9;]*m')
+
+# HF performance knobs (lower CPU / smoother streaming)
+HF_STREAM_INTERVAL_SECS = 0.25   # how often Gradio updates UI
+HF_FRAME_SKIP = 3               # only enqueue every Nth rendered frame
+HF_FRAME_MAX_EDGE = 320         # downscale frames before sending to Gradio
 
 class _Capture:
     def __init__(self, orig):
@@ -53,10 +57,16 @@ sys.stdout = _Capture(sys.__stdout__)
 
 # ── Headless display shim (replaces display.py on HF Spaces) ──
 class HeadlessDisplay:
-    def __init__(self): self._phase = ""
+    def __init__(self, frame_skip: int = HF_FRAME_SKIP):
+        self._phase = ""
+        self._frame_skip = max(1, int(frame_skip))
+        self._frame_ctr = 0
     def set_phase(self, t): self._phase = t; LOG_Q.put(f"▶ {t}")
     def render_frame(self, rgb=None):
         if rgb is not None:
+            self._frame_ctr += 1
+            if (self._frame_ctr % self._frame_skip) != 0:
+                return
             try:
                 FRAME_Q.put_nowait(rgb)
             except queue.Full:
@@ -76,17 +86,17 @@ _thread  = None
 def run_experiment_thread():
     global _running
     try:
-        import importlib, environments
+        import environments
         import gymnasium as gym
-        from rl_core           import DQNAgent, preprocess_obs
-        from reflection_engine import analyze_failure_log, verify_rule
+        from rl_core           import DQNAgent
         from memory_hub        import MemoryHub
-        from planner_agent     import OnlineExplorerAgent
 
         # Inject headless display as the global `display` in run_experiment
         import run_experiment as exp_mod
         disp = HeadlessDisplay()
         exp_mod.display = disp
+        # Slow down stepping a bit on HF to reduce load (deadlines are wall-clock).
+        exp_mod.TIMING = exp_mod.ExperimentTiming(step_delay_secs=0.18)
 
         memory  = MemoryHub()
         agent_a = DQNAgent()
@@ -96,7 +106,6 @@ def run_experiment_thread():
 
         # ── Phase 1: Lava Room ──────────────────────────────
         disp.set_phase("PHASE 1 — Lava Room (RL Exploration)")
-        env = make_env("MiniGrid-LavaRoom-v0")
         LOG_Q.put("─"*48)
         LOG_Q.put("[Agent A] Entering MiniGrid-LavaRoom-v0")
         LOG_Q.put("─"*48)
@@ -198,6 +207,9 @@ def start_and_stream():
                 break
 
         img = Image.fromarray(last_frame.astype(np.uint8))
+        # Downscale to reduce network + browser decode cost on Spaces
+        if HF_FRAME_MAX_EDGE and max(img.size) > HF_FRAME_MAX_EDGE:
+            img.thumbnail((HF_FRAME_MAX_EDGE, HF_FRAME_MAX_EDGE), Image.Resampling.BILINEAR)
 
         log_body = "<br>".join(_log_html_lines[-80:])
         html = f"""
@@ -211,7 +223,7 @@ def start_and_stream():
         """
 
         yield img, html
-        time.sleep(0.12)
+        time.sleep(HF_STREAM_INTERVAL_SECS)
 
         if not got_log:
             idle_ticks += 1

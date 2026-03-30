@@ -53,8 +53,9 @@ class LavaRoomEnv(MiniGridEnv):
         self.agent_dir = 0
         # Horizontal lava barrier with one gap at column 3
         for i in range(1, width - 1):
-            if i != 3:
-                self.grid.set(i, height // 2, Lava())
+            if i%2 != 0:
+                self.grid.set(i, width // 2, Lava())
+                self.grid.set(width // 2, i, Lava())
 
     def step(self, action):
         obs, reward, terminated, truncated, info = super().step(action)
@@ -85,8 +86,10 @@ class QuicksandRoomEnv(MiniGridEnv):
         self.agent_dir = 0
         # Vertical quicksand wall with a gap at row 4
         for j in range(1, height - 1):
-            if j != 4:
-                self.grid.set(width // 2, j, Quicksand())
+            if j%2 != 0:
+                self.grid.set(width // 2-1, j, Quicksand())
+                self.grid.set(width // 1 - 3, j, Quicksand())
+
 
     def step(self, action):
         obs, reward, terminated, truncated, info = super().step(action)
@@ -123,7 +126,7 @@ class CombinedTestingEnv(MiniGridEnv):
         self.grid.set(k, 2, Lava())
         self.grid.set(3, k, Lava())
         self.grid.set(4, l, Lava())
-        self.grid.set(1, 2, Lava())
+
         
 
         # Quicksand cluster
@@ -132,7 +135,7 @@ class CombinedTestingEnv(MiniGridEnv):
         self.grid.set(6, k, Quicksand())
         self.grid.set(l, 4, Quicksand())
         self.grid.set(7, 4, Quicksand())
-        self.grid.set(2, l, Quicksand())
+
         
 
     def step(self, action):
