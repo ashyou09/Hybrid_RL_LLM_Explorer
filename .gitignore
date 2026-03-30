@@ -3,6 +3,7 @@ __pycache__/
 *.pyc
 *.pyo
 chroma_db/
+.chroma_db/
 failure_log.json
 .DS_Store
 *.egg-info/

@@ -14,12 +14,11 @@ from chromadb.utils import embedding_functions
 class MemoryHub:
     """Vector store that bridges RL knowledge → symbolic planners.
 
-    Uses PersistentClient at /tmp/chroma_db — the /tmp directory is always
-    writable on HF Spaces (unlike /app).  A full rmtree before each init
-    guarantees a clean slate with no stale collections.
+    Uses a local PersistentClient folder and wipes it at init so each run
+    starts from a clean slate.
     """
 
-    DB_PATH = "/tmp/chroma_db"
+    DB_PATH = ".chroma_db"
 
     def __init__(self, model_name="all-MiniLM-L6-v2"):
         import shutil, os
@@ -37,7 +36,7 @@ class MemoryHub:
             embedding_function=self.embed_fn,
             metadata={"hnsw:space": "cosine"},
         )
-        print("[Memory Hub] Initialized ChromaDB Vector Store (/tmp, clean slate).")
+        print(f"[Memory Hub] Initialized ChromaDB Vector Store ({self.DB_PATH}, clean slate).")
 
     # ── store a new rule ──
 

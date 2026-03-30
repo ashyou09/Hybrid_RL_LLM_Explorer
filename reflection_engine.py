@@ -12,6 +12,46 @@ import json
 import ollama
 
 
+def _extract_precise_trigger(state_context: str, fatal_action: str) -> str | None:
+    """Return a concrete 1–2(ish) word object label from the observation text.
+
+    We intentionally keep this dumb and deterministic:
+    - Prefer the tile that corresponds to the fatal action (usually `Front:`).
+    - Only return labels that already exist in the observation parser output.
+    """
+    if not state_context:
+        return None
+
+    # Expected format from rl_core.parse_local_observation():
+    # "Front: X. Left: Y. Right: Z."
+    parts = {}
+    for chunk in state_context.split("."):
+        chunk = chunk.strip()
+        if not chunk:
+            continue
+        if chunk.startswith("Front:"):
+            parts["Front"] = chunk.replace("Front:", "").strip()
+        elif chunk.startswith("Left:"):
+            parts["Left"] = chunk.replace("Left:", "").strip()
+        elif chunk.startswith("Right:"):
+            parts["Right"] = chunk.replace("Right:", "").strip()
+
+    def _is_concrete(label: str | None) -> bool:
+        if not label:
+            return False
+        low = label.lower()
+        return low not in {"wall", "empty space", "unknown"}
+
+    if fatal_action == "Move Forward" and _is_concrete(parts.get("Front")):
+        return parts["Front"]
+
+    # Fallback: pick the first concrete thing we saw.
+    for k in ("Front", "Left", "Right"):
+        if _is_concrete(parts.get(k)):
+            return parts[k]
+    return None
+
+
 def analyze_failure_log(log_path="failure_log.json", model_name="llama3.2:3b"):
     """Ask the LLM: 'What killed the agent and how to avoid it?'
     Returns dict with keys: rule, forbidden_action, trigger_feature."""
@@ -50,13 +90,18 @@ Output ONLY a JSON object with these keys:
         print(f"[Reflection Engine] LLM bypassed ({e})")
         print("[Reflection Engine] Using graceful simulated rule for ultra-fast testing.\n")
 
-        # Fallback: infer the hazard from the logged context
-        trigger = "sand" if "sand" in data["state_context"].lower() else "red lava"
-        return {
+        # Fallback: deterministically extract the trigger from the exact observation labels.
+        trigger = _extract_precise_trigger(data.get("state_context", ""), data.get("fatal_action", ""))
+        if not trigger:
+            # Last-resort compatibility fallback (should rarely happen)
+            trigger = "sand" if "sand" in data.get("state_context", "").lower() else "red lava"
+
+        rule_data = {
             "rule":             f"Avoid moving forward into {trigger}",
             "forbidden_action": data["fatal_action"],
             "trigger_feature":  trigger,
         }
+        return rule_data
 
 
 def verify_rule(env, agent, rule_data, trials=1):

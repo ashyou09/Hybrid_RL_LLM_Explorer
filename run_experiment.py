@@ -13,7 +13,6 @@ Single pygame window: game on the LEFT, coloured log on the RIGHT.
 ChromaDB is wiped at both start AND end so every run is pristine.
 """
 
-import shutil
 import time
 import gymnasium as gym
 import environments                          # registers custom rooms
@@ -22,9 +21,18 @@ from reflection_engine import analyze_failure_log, verify_rule
 from memory_hub        import MemoryHub
 from planner_agent     import OnlineExplorerAgent
 from display           import UnifiedDisplay
-import random
+from dataclasses import dataclass
 
 display = None   # global — set in __main__
+
+@dataclass(frozen=True)
+class ExperimentTiming:
+    step_delay_secs: float = 0.10          # visual speed per env step
+    learning_phase_secs: int = 30          # wall-clock seconds per learning phase
+    final_exam_secs: int = 120             # wall-clock seconds for phase 3
+    final_exam_max_episodes: int = 2       # how many phase 3 episodes at most
+
+TIMING = ExperimentTiming()
 
 
 # ──────────────────────────────────────────────────────────
@@ -32,17 +40,15 @@ display = None   # global — set in __main__
 #  Each phase always runs for LEARNING_PHASE_SECS wall-clock seconds.
 # ──────────────────────────────────────────────────────────
 
-LEARNING_PHASE_SECS = 30   # minimum wall-clock seconds per learning phase
-
 def run_learning_phase(env_name, agent, memory):
     label = env_name.split("-")[1]
     display.set_phase(f"RL Exploration — {label}")
 
     print(f"\n{'─'*50}")
-    print(f"[Agent A] Entering {env_name}  ({LEARNING_PHASE_SECS}s)")
+    print(f"[Agent A] Entering {env_name}  ({TIMING.learning_phase_secs}s)")
     print(f"{'─'*50}")
 
-    deadline = time.time() + LEARNING_PHASE_SECS
+    deadline = time.time() + TIMING.learning_phase_secs
     deaths = 0
     rule_data = None
     trigger   = None
@@ -61,7 +67,7 @@ def run_learning_phase(env_name, agent, memory):
                 break
             state  = preprocess_obs(obs)
             action = agent.select_action(state)
-            display.wait(0.2)
+            display.wait(TIMING.step_delay_secs)
 
             next_obs, reward, terminated, truncated, _ = env.step(action)
             display.render_frame(env.render())
@@ -112,7 +118,7 @@ def run_learning_phase(env_name, agent, memory):
             print(f"  [Truth] Episode {ep} starting…")
 
             while time.time() < deadline:
-                display.wait(0.2)
+                display.wait(TIMING.step_delay_secs)
                 action = explorer.act(env, obs)
                 obs, reward, terminated, truncated, _ = env.step(action)
                 display.render_frame(env.render())
@@ -138,7 +144,7 @@ def run_learning_phase(env_name, agent, memory):
         while time.time() < deadline:
             state  = preprocess_obs(obs)
             action = agent.select_action(state)
-            display.wait(0.2)
+            display.wait(TIMING.step_delay_secs)
             obs, reward, terminated, truncated, _ = env.step(action)
             display.render_frame(env.render())
             if terminated or truncated:
@@ -146,7 +152,7 @@ def run_learning_phase(env_name, agent, memory):
                 display.render_frame(env.render())
         env.close()
 
-    elapsed = LEARNING_PHASE_SECS - max(0, deadline - time.time())
+    elapsed = TIMING.learning_phase_secs - max(0, deadline - time.time())
     print(f"  [{label}] Phase complete ({elapsed:.0f}s elapsed)")
     return trigger
 
@@ -156,21 +162,19 @@ def run_learning_phase(env_name, agent, memory):
 #  Phase 3: Final Exam
 # ──────────────────────────────────────────────────────────
 
-FINAL_EXAM_SECS = 120    # how long Phase 3 runs (wall-clock seconds)
-
 def run_final_exam(env_name, memory):
-    """Run Phase 3 for up to FINAL_EXAM_SECS wall-clock seconds, max 2 episodes."""
+    """Run Phase 3 for up to TIMING.final_exam_secs wall-clock seconds."""
     display.set_phase("PHASE 3 — FINAL EXAM")
 
     print(f"\n{'═'*50}")
     print(f"  PHASE 3 — FINAL EXAM: {env_name}")
-    print(f"  Running for up to {FINAL_EXAM_SECS} seconds (max 1 episode)…")
+    print(f"  Running for up to {TIMING.final_exam_secs} seconds (max {TIMING.final_exam_max_episodes} episodes)…")
     print(f"{'═'*50}")
 
-    deadline = time.time() + FINAL_EXAM_SECS
+    deadline = time.time() + TIMING.final_exam_secs
     episode  = 0
 
-    while time.time() < deadline and episode < 1:
+    while time.time() < deadline and episode < TIMING.final_exam_max_episodes:
         episode += 1
         env      = gym.make(env_name, render_mode="rgb_array")
         explorer = OnlineExplorerAgent(memory)
@@ -180,7 +184,7 @@ def run_final_exam(env_name, memory):
 
         step = 0
         while time.time() < deadline:
-            display.wait(0.2)
+            display.wait(TIMING.step_delay_secs)
             action = explorer.act(env, obs)
             obs, reward, terminated, truncated, _ = env.step(action)
             display.render_frame(env.render())
@@ -197,7 +201,7 @@ def run_final_exam(env_name, memory):
 
         env.close()
 
-    print(f"\n  [Phase 3] {FINAL_EXAM_SECS}-second showcase complete — {episode} episode(s) played.")
+    print(f"\n  [Phase 3] {TIMING.final_exam_secs}-second showcase complete — {episode} episode(s) played.")
 
 
 # ──────────────────────────────────────────────────────────
@@ -228,7 +232,7 @@ if __name__ == "__main__":
     run_final_exam("MiniGrid-CombinedTesting-v0", memory)
 
     display.set_phase("Done")
-    display.wait(0.2)
+    display.wait(TIMING.step_delay_secs)
 
     print("[Done] Next run will start fresh automatically.\n")
 
