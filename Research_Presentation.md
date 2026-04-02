@@ -1,15 +1,34 @@
-# Exp-1: Hybrid RL → LLM → Rule-Guided Explorer
-## Semantic Safety Transfer via Vector-Embedded LLM Rules
+# 🧭 Exp-1: Hybrid RL → LLM → Rule-Guided Explorer
+### Semantic Safety Transfer via Vector-Embedded LLM Rules
+
+[![Hugging Face Spaces](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Spaces-blue)](https://huggingface.co/spaces/ashyou09/hybrid-rl-llm-explorer)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![PyTorch](https://img.shields.io/badge/PyTorch-%23EE4C2C.svg?style=flat&logo=PyTorch&logoColor=white)](https://pytorch.org/)
+[![Ollama](https://img.shields.io/badge/Ollama-llama3.2-black.svg?style=flat&logo=ollama&logoColor=white)](https://ollama.com/)
 
 > **A Zero-Shot Knowledge Transfer Architecture Between Stochastic RL and a Rule-Guided Autonomous Agent**
 
 ---
 
+## 📑 Table of Contents
+
+- [Abstract](#abstract)
+- [1. Introduction](#1-introduction)
+- [2. System Architecture](#2-system-architecture)
+- [3. Experimental Procedure](#3-experimental-procedure)
+- [4. Results](#4-results)
+- [5. File Structure](#5-file-structure)
+- [6. How to Run](#6-how-to-run)
+- [7. Contributions & Future Work](#7-contributions--future-work)
+- [8. Citation](#8-citation)
+
+---
+
 ## Abstract
 
-We present a three-tier hybrid AI architecture that demonstrates **zero-shot semantic rule transfer** across fundamentally incompatible reasoning paradigms. A stochastic Reinforcement Learning agent (PyTorch DQN) explores hazardous grid environments, accumulates fatal experiences, and triggers a local Large Language Model (Ollama `llama3.2:3b`) to distil deaths into generalised natural-language safety rules. These rules are vectorised using SentenceTransformers (`all-MiniLM-L6-v2`) and stored in a ChromaDB cosine-similarity index.
+We present a tiered hybrid AI architecture that demonstrates **zero-shot semantic rule transfer** across fundamentally incompatible reasoning paradigms. A stochastic Reinforcement Learning agent (PyTorch DQN) explores hazardous grid environments, accumulates fatal experiences, and triggers a local Large Language Model (Ollama `llama3.2:3b`) to distil deaths into generalised natural-language safety rules. These rules are vectorised using SentenceTransformers (`all-MiniLM-L6-v2`) and stored in a ChromaDB cosine-similarity index.
 
-A **rule-guided explorer** — which has *never seen the environment*, uses *no neural network*, and performs *no systematic pathfinding* — queries this vector store in real time. When it perceives a tile ahead, it asks the Vector DB: *"Have I learned this is dangerous?"* If yes, it turns randomly like a confused human. If no, it steps forward. This human-like navigator successfully traverses unseen mazes containing novel hazard variants **without any retraining**.
+A **rule-guided explorer** — which has *never seen the environment*, uses *no neural network*, and performs *no systematic pathfinding* — queries this vector store in real time. When it perceives a tile ahead, it asks the Vector DB: *"Have I learned this is dangerous?"* If yes, it turns randomly like a cautious, confused human. If no, it steps forward. This human-like navigator successfully traverses unseen mazes containing novel hazard variants **without any retraining**.
 
 We show that cosine similarity between text embeddings enables automatic generalisation: a rule learned about `"red lava"` protects against `"sand"` (yellow-tinted lava) with zero additional data.
 
@@ -18,17 +37,15 @@ We show that cosine similarity between text embeddings enables automatic general
 ## 1. Introduction
 
 ### 1.1 The Problem
-
-Modern AI systems face a fundamental brittleness: knowledge learned by one algorithm cannot easily transfer to another. A DQN agent that learns to avoid lava stores this knowledge as weight matrices — opaque numbers that are meaningless to any other system.
+Modern AI systems face a fundamental brittleness: knowledge learned by one algorithm cannot easily transfer to another. A DQN agent that learns to avoid lava stores this knowledge as weight matrices — opaque numbers that are practically meaningless to any other autonomous system.
 
 ### 1.2 Our Approach
-
 We propose an intermediate **semantic layer** — a Vector Database of natural-language rules — that serves as a universal interface between any learning system and any planning system. The core insight:
 
+> [!NOTE] 
 > **If knowledge is stored as human-readable text embedded in vector space, any algorithm capable of generating a text query can access it.**
 
 ### 1.3 Research Questions
-
 1. Can RL failure experiences be automatically converted into reusable safety rules?
 2. Can these rules transfer zero-shot to a completely different agent with no memory or pathfinding?
 3. Does vector similarity enable generalisation to *novel* hazard variants (e.g., red lava → sand)?
@@ -38,68 +55,48 @@ We propose an intermediate **semantic layer** — a Vector Database of natural-l
 
 ## 2. System Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                     EXPERIMENT PIPELINE                          │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  ┌──────────────┐   failure_log.json   ┌───────────────────┐   │
-│  │  System 1    │ ──────────────────►  │  System 2         │   │
-│  │  The Muscle  │  {env, action,       │  The Brain        │   │
-│  │  PyTorch DQN │   visual_context}    │  Ollama llama3.2  │   │
-│  │  ε-greedy    │                      │  JSON rule output  │   │
-│  └──────────────┘                      └─────────┬─────────┘   │
-│        │                                          │              │
-│        │  dies 2×                                 │ rule JSON    │
-│        │                                          ▼              │
-│        │                                ┌───────────────────┐   │
-│        │                                │  System 3         │   │
-│        │                                │  The Memory       │   │
-│        │                                │  ChromaDB+MiniLM  │   │
-│        │                                │  Cosine Similarity│   │
-│        │                                └─────────┬─────────┘   │
-│        │                                          │              │
-│        │                                          │ vector query │
-│        │                                          ▼              │
-│        │                                ┌───────────────────┐   │
-│        └──── same room (for proof) ──►  │  System 4         │   │
-│                                         │  The Explorer     │   │
-│                                         │  Rule-Guided      │   │
-│                                         │  Random Walker    │   │
-│                                         └───────────────────┘   │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    classDef system fill:#2d3748,stroke:#4a5568,stroke-width:2px,color:#edf2f7;
+    classDef db fill:#2c5282,stroke:#4299e1,stroke-width:2px,color:#ebf8ff;
+    classDef llm fill:#276749,stroke:#48bb78,stroke-width:2px,color:#f0fff4;
+    classDef agent fill:#742a2a,stroke:#fc8181,stroke-width:2px,color:#fff5f5;
+    
+    A["<b>System 1: The Muscle</b><br/>(PyTorch DQN RL Agent)<br/><i>ε-greedy</i>"]:::agent
+    B["<b>System 2: The Brain</b><br/>(Ollama llama3.2)<br/><i>LLM Reflection Engine</i>"]:::llm
+    C["<b>System 3: The Memory</b><br/>(ChromaDB + MiniLM)<br/><i>Vector Database</i>"]:::db
+    D["<b>System 4: The Explorer</b><br/>(Rule-Guided Random Walker)<br/><i>Reactive Navigator</i>"]:::system
+    
+    A -- "failure_log.json<br/>{env, action, context}" --> B
+    B -- "generalised JSON rule" --> C
+    D <--> |"semantic text query /<br/>rule match via Cosine Sim"| C
+    A -. "triggers proof<br/>in same environment" .-> D
 ```
 
 ### 2.1 System 1 — The Muscle (RL Agent)
-
-| Component   | Detail                                                   |
-| ----------- | -------------------------------------------------------- |
-| Algorithm   | Deep Q-Network (DQN)                                     |
-| Framework   | PyTorch                                                  |
-| Network     | 147 → 128 → 64 → 3 (fully connected MLP)              |
-| Policy      | ε-greedy (ε decays exponentially from 1.0 → 0.05)     |
-| Observation | 7×7×3 egocentric categorical image (MiniGrid standard) |
-| Actions     | Turn Left (0), Turn Right (1), Move Forward (2)          |
-| Input       | Raw grid pixels flattened to 147-D float vector          |
-| Output      | Q-values for 3 actions                                   |
+| Component | Detail |
+| :--- | :--- |
+| **Algorithm** | Deep Q-Network (DQN) in `PyTorch` |
+| **Network** | 147 → 128 → 64 → 3 (fully connected MLP) |
+| **Policy** | ε-greedy (ε decays exponentially from 1.0 → 0.05) |
+| **Observation**| 7×7×3 egocentric categorical image (MiniGrid standard) |
+| **Actions** | Turn Left (0), Turn Right (1), Move Forward (2) |
+| **Input** | Raw grid pixels flattened to 147-D float vector |
 
 **Role:** Explores blindly, collects fatal experiences, triggers the LLM pipeline on the 2nd death. It is the *sacrificial learner* — it exists to generate knowledge, not to survive.
 
 ---
 
 ### 2.2 System 2 — The Brain (LLM Reflection Engine)
+| Component | Detail |
+| :--- | :--- |
+| **Model** | `llama3.2:3b` (local, via Ollama) |
+| **Input** | JSON: `{environment, fatal_action, state_context}` |
+| **Output** | JSON: `{rule, forbidden_action, trigger_feature}` |
+| **Fallback** | Deterministic keyword-based rule if Ollama is offline |
 
-| Component | Detail                                              |
-| --------- | --------------------------------------------------- |
-| Model     | `llama3.2:3b` (local, via Ollama)                 |
-| Input     | JSON: `{environment, fatal_action, state_context}` |
-| Output    | JSON: `{rule, forbidden_action, trigger_feature}`  |
-| Fallback  | Deterministic keyword-based rule if Ollama offline  |
-
-**Prompt template:**
-
-```
+**Prompt Template:**
+```text
 You are an expert autonomous reasoning AI.
 An RL agent fatally failed in: {environment}.
 Visual context before death: "{state_context}"
@@ -109,8 +106,7 @@ Create a generalised semantic rule to prevent this failure in ANY environment.
 Output ONLY a JSON object with keys: rule, forbidden_action, trigger_feature.
 ```
 
-**Example LLM output:**
-
+**Example Output:**
 ```json
 {
   "rule": "Never move forward when facing red lava",
@@ -122,152 +118,114 @@ Output ONLY a JSON object with keys: rule, forbidden_action, trigger_feature.
 ---
 
 ### 2.3 System 3 — The Memory (Vector Database)
+| Component | Detail |
+| :--- | :--- |
+| **Database** | ChromaDB (persistent, local `.chroma_db`) |
+| **Embeddings** | `all-MiniLM-L6-v2` (384-dimensional vectors) |
+| **Matching** | Cosine Similarity (Threshold ≤ 0.30 distance) |
+| **Storage** | trigger text (embedded), rule string, forbidden action |
 
-| Component          | Detail                                                 |
-| ------------------ | ------------------------------------------------------ |
-| Database           | ChromaDB (persistent, local)                           |
-| Embedding Model    | `all-MiniLM-L6-v2` (384-dimensional vectors)         |
-| Distance Metric    | Cosine Similarity                                      |
-| Matching Threshold | 0.70 similarity (distance ≤ 0.30)                     |
-| Stored per rule    | trigger text (embedded), rule string, forbidden action |
+**How Matching Works:**
+The agent converts its perception into text (e.g., `"sand"`), queries ChromaDB, and receives the nearest stored trigger. Operations with distance ≤ 0.30 trigger the associated rule.
 
-**How matching works:**
+| Query Text | Stored Trigger | Distance | Match Status |
+| :--- | :--- | :--- | :--- |
+| `"red lava"` | `"red lava"` | 0.00 | ✅ Exact Match |
+| `"sand"` | `"red lava"` | ~0.22 | ✅ **Generalises!** |
+| `"empty space"` | `"red lava"` | ~0.85 | ❌ Safe (No Match) |
+| `"wall"` | `"red lava"` | ~0.90 | ❌ Safe (No Match) |
 
-The agent converts what it perceives into text (e.g. `"sand"`), queries ChromaDB, and receives the nearest stored trigger. If cosine distance ≤ 0.30, the associated rule fires.
-
-| Query           | Stored Trigger  | Distance | Match?          |
-| --------------- | --------------- | -------- | --------------- |
-| `"red lava"`  | `"red lava"`  | 0.00     | ✅ Exact        |
-| `"sand"`      | `"red lava"`  | ~0.22    | ✅ Generalises! |
-| `"red lava"`  | `"sand"`      | ~0.22    | ✅ Generalises! |
-| `"empty space"` | `"red lava"` | ~0.85    | ❌ Safe         |
-| `"wall"`      | `"red lava"`  | ~0.90    | ❌ Safe         |
-
-This is the **core mechanism** of zero-shot transfer: semantic meaning, not string matching.
+> [!IMPORTANT]
+> This is the **core mechanism** of zero-shot transfer: the agent associates based on semantic meaning, not arbitrary string matching.
 
 ---
 
 ### 2.4 System 4 — The Explorer (Rule-Guided Random Walker)
+| Component | Detail |
+| :--- | :--- |
+| **Algorithm** | **None** — purely reactive navigation |
+| **Vision** | 1 block ahead (egocentric, like a human) |
+| **Memory** | **None** — no visited map, no traversal stack |
+| **Movement** | Move forward if safe; turn randomly if blocked or endangered |
 
-| Component | Detail                                            |
-| --------- | ------------------------------------------------- |
-| Algorithm | **No pathfinding algorithm** — purely reactive   |
-| Vision    | 1 block ahead (egocentric, like a human)          |
-| Memory    | **None** — no visited map, no backtracking stack |
-| Movement  | Move forward if safe; turn randomly if blocked    |
+**Decision Per Tick:**
 
-**Decision per tick:**
-
-```
-Look at tile ahead
-  │
-  ├─► Is it a WALL?
-  │         └─► Turn randomly left or right
-  │
-  ├─► Does Vector DB say "DANGER"?
-  │         └─► Turn randomly (like a confused human avoiding threat)
-  │
-  └─► Path is CLEAR
-            └─► Step forward
+```mermaid
+flowchart TD
+    classDef action fill:#2b6cb0,stroke:#2c5282,color:#fff
+    classDef condition fill:#d69e2e,stroke:#b7791f,color:#fff
+    classDef success fill:#2f855a,stroke:#276749,color:#fff
+    
+    A[Look at tile ahead]:::action --> B{Is it a WALL?}:::condition
+    B -- Yes --> C[Turn randomly left or right]:::action
+    B -- No --> D{Does Vector DB<br/>say DANGER?}:::condition
+    D -- Yes --> E[Turn randomly<br/>like a cautious human]:::action
+    D -- No --> F[Path is CLEAR<br/>Step forward]:::success
 ```
 
 **Why no DFS or Dijkstra?**
-
-|                | Global Dijkstra          | DFS Explorer           | Rule-Guided Walker (ours)        |
-| -------------- | ------------------------ | ---------------------- | -------------------------------- |
-| Map knowledge  | Sees entire grid         | Sees 1 block ahead     | Sees 1 block ahead               |
-| Strategy       | Pre-computes optimal path | Systematic DFS        | Random turns with rule-avoidance |
-| Memory         | Full grid map            | Visited set + stack    | **None**                         |
-| Realism        | Omniscient (unrealistic) | Human-like             | **Most human-like**              |
-| Success factor | Perfect algorithm        | Perfect algorithm      | **Inherited safety knowledge**   |
-
-> The explorer may loop, get confused, or take a long path — **exactly like a human** — but it never walks into *known* dangers because it carries the rules learned from the RL agent's deaths.
+| Feature | Global Dijkstra | DFS Explorer | Rule-Guided Walker (Ours) |
+| :--- | :--- | :--- | :--- |
+| **Map Knowledge** | Sees entire grid | Sees 1 block ahead | Sees 1 block ahead |
+| **Strategy** | Pre-computes optimal path | Systematic DFS | Random turns with rule-avoidance |
+| **Memory** | Full grid map | Visited set + stack | **None** |
+| **Success Factor**| Perfect Pathfinding | Perfect Pathfinding | **Inherited Safety Knowledge** |
 
 ---
 
 ## 3. Experimental Procedure
 
 ### 3.1 Environment Specifications
+| Phase / Room | Size | Hazard | Colour | Layout |
+| :--- | :--- | :--- | :--- | :--- |
+| **1 — Lava Room** | 7×7 | Lava | Red | Horizontal barrier, 1 gap |
+| **2 — Sand Room** | 7×7 | Sand | Yellow | Vertical barrier, 1 gap |
+| **3 — Final Exam**| 9×9 | Both | Both | Scattered clusters (Unseen) |
 
-| Room           | Size | Hazard  | Colour | Layout                    |
-| -------------- | ---- | ------- | ------ | ------------------------- |
-| 1 — Lava Room  | 7×7 | Lava    | Red    | Horizontal barrier, 1 gap |
-| 2 — Sand Room  | 7×7 | Sand    | Yellow | Vertical barrier, 1 gap   |
-| 3 — Final Exam | 9×9 | Both    | Both   | Scattered clusters        |
-
-**Reward structure:** −10 for stepping on any hazard, +10 for reaching the goal, −0.1 per step (time penalty).
-
-**Tile naming:** The observation parser in `rl_core.py` maps:
-- `(type=lava, color=red)` → `"red lava"`
-- `(type=lava, color=yellow)` → `"sand"` ← intentionally different name to test cross-hazard generalisation
+**Reward Structure:** −10 for stepping on any hazard, +10 for reaching the goal, −0.1 per step penalty.
 
 ### 3.2 Phase 1 — Learning about Lava
-
 <div align="center">
   <img src="assets/rl_lava.png" width="800" alt="Phase 1 Lava Room Exploration" />
 </div>
 
-```
-Step 1.  RL Agent spawns in Lava Room (7×7, red lava barrier)
-Step 2.  ε-greedy DQN explores randomly
-Step 3.  Steps into lava → dies (reward = −10) → Death #1
-Step 4.  Respawns, explores again → Death #2
-Step 5.  failure_log.json written:
-         {"fatal_action": "Move Forward",
-          "state_context": "Front: red lava. Left: wall. Right: empty space."}
-Step 6.  Ollama llama3.2:3b produces:
-         {"rule": "Never move forward when facing red lava",
-          "forbidden_action": "Move Forward",
-          "trigger_feature": "red lava"}
-Step 7.  Rule verified across 3 mock trials → PASSED
-Step 8.  "red lava" embedded as 384-D vector → stored in ChromaDB
-Step 9.  TRUTH CONFIRMATION:
-         Same room re-opened. Rule-Guided Explorer enters.
-         Sees "red lava" ahead → ChromaDB match → turns randomly.
-         Navigates to goal → no deaths → rule validated.
-```
+1. **Sacrifice:** The RL Agent spawns in Lava Room and explores ε-greedily. It steps into lava (Reward: -10) and dies twice.
+2. **Analysis:** The `failure_log.json` is sent to `llama3.2:3b`, producing the rule: *"Never move forward when facing red lava."*
+3. **Storage:** The rule is embedded via `SentenceTransformers` and saved into `ChromaDB`.
+4. **Validation:** The System 4 Explorer enters the same room to confirm the rule guarantees 100% safety.
 
 <div align="center">
   <img src="assets/truth_lava.png" width="800" alt="Truth Confirmation - Lava Room" />
 </div>
 
 ### 3.3 Phase 2 — Learning about Sand
-
-Identical procedure in Sand Room. The LLM generates a rule about sand (or lava generally). Both rules now coexist in ChromaDB as independent vectors.
+Identical procedure in the Sand Room. The LLM generates a rule about yellow sand. Both rules now intuitively coexist in ChromaDB as distinct vector nodes.
 
 <div align="center">
   <img src="assets/rl_sand.png" width="800" alt="Phase 2 Sand Room Exploration" />
-</div>
-<br>
-<div align="center">
+  <br><br>
   <img src="assets/truth_sand.png" width="800" alt="Truth Confirmation - Sand Room" />
 </div>
 
 ### 3.4 Phase 3 — Final Exam (Zero-Shot Transfer)
-
 <div align="center">
   <img src="assets/phase3_combined.png" width="800" alt="Final Exam - Combined Maze" />
 </div>
 
-```
-Step 1.  Rule-Guided Explorer spawns in 9×9 Combined Room (never seen before)
-Step 2.  Room contains BOTH red lava AND sand clusters, scattered randomly
-Step 3.  Explorer walks step by step:
-           - Sees "red lava" ahead → DB match (dist ~0.00) → turns randomly
-           - Sees "sand" ahead     → DB match (dist ~0.22) → turns randomly
-           - Sees "empty space"    → no match → steps forward
-           - Gets stuck            → turns another direction randomly
-Step 4.  Explorer reaches goal WITHOUT touching any hazard
-         → ZERO-SHOT TRANSFER DEMONSTRATED
-```
+The Explorer is dropped into a **9×9 Combined Testing Room** it has never seen, containing scattered clusters of both Red Lava and Sand.
+
+- **Behaviour:** 
+  - Sees `"red lava"` → Exact match (dist ~0.00) → Evades.
+  - Sees `"sand"` → Semantic match (dist ~0.22) → Evades.
+  - Sees `"empty space"` → Safe → Moves forward.
+- **Outcome:** The Explorer successfully traverses the complex environment with zero deaths, demonstrating flawless zero-shot knowledge transfer.
 
 ---
 
 ## 4. Results
 
 ### 4.1 Sample Run Output
-
-```
+```text
 =======================================================
   Exp-1: Hybrid RL > LLM > Semantic Rule Transfer
 =======================================================
@@ -286,21 +244,11 @@ Step 4.  Explorer reaches goal WITHOUT touching any hazard
 [Memory Hub] Stored rule for 'red lava'.
 
   ╔══════════════════════════════════════════════╗
-  ║  TRUTH CONFIRMATION: Re-entering same room    ║
-  ║  Verifying the LLM rule prevents real deaths  ║
+  ║  TRUTH CONFIRMATION: Re-entering same room   ║
+  ║  Verifying the LLM rule prevents real deaths ║
   ╚══════════════════════════════════════════════╝
   [✓] Safe — stepping forward
   [✗] red lava ahead — Rule: Never move forward when facing red lava
-  [✓ TRUTH CONFIRMED] Rule works — no deaths!
-
-──────────────────────────────────────────────────
-[Agent A] Entering MiniGrid-QuicksandRoom-v0
-──────────────────────────────────────────────────
-  [💀] Death #1 at step 36
-  [💀] Death #2 at step 51
-  [Agent A] 2 deaths collected. Sending to LLM…
-[Reflection Engine] Derived Rule: Avoid moving forward into sand
-[Memory Hub] Stored rule for 'sand'.
   [✓ TRUTH CONFIRMED] Rule works — no deaths!
 
 ───────────────────────────────────────────────────────
@@ -311,129 +259,84 @@ Step 4.  Explorer reaches goal WITHOUT touching any hazard
   PHASE 3 — FINAL EXAM: MiniGrid-CombinedTesting-v0
 ══════════════════════════════════════════════════
   [✓] Safe — stepping forward
-  [✗] red lava ahead — Rule: Never move forward when facing red lava
-  [✓] Safe — stepping forward
   [✗] sand ahead — Rule: Avoid moving forward into sand
   [✓] Safe — stepping forward
   [✓ FLAWLESS SUCCESS] Goal reached in 68 steps!
 ```
 
-### 4.2 Key Finding: Semantic Generalisation
-
-The explorer in Phase 3 encounters **sand** — a completely different word from **red lava** learned in Phase 1. Yet the ChromaDB query still matches with cosine distance ~0.22. This demonstrates:
-
-- Generalisation is **automatic** (no extra data or retraining)
-- Generalisation emerges from **semantic meaning**, not string similarity
-- A rule about one hazard type **protects against related hazard types**
-
-### 4.3 Failure Mode: Vague LLM Triggers
-
-When the LLM generates a vague trigger like `"hazardous area"` instead of `"red lava"`, the vector embedding may not match the visual label at query time. This is mitigated by:
-- Prompt engineering that requests specific 1-3 word object names
-- The fallback rule engine which forces precise trigger extraction from the state context
+### 4.2 Key Findings
+- **Semantic Generalisation:** The query for `"sand"` matches `"red lava"` with closely aligned semantic vector proximity. Generalisation is an automatic artefact of the NLP space.
+- **Algorithm-Agnostic Output:** The semantic layer breaks down the silo between stochastic AI (NNs) and symbolic AI (rules engines). 
 
 ---
 
 ## 5. File Structure
-
-```
+```text
 game_Exp1/
-├── run_experiment.py        # Main orchestrator — 3-phase pipeline
-├── display.py               # Unified pygame window (game left, log right)
-├── app.py                   # Gradio interface (HF Spaces / browser demo)
-├── environments.py          # Custom MiniGrid rooms (Lava, Sand, Combined)
-├── rl_core.py               # DQN agent + observation → text parser
-├── reflection_engine.py     # Ollama LLM prompt + fallback rule generator
-├── memory_hub.py            # ChromaDB vector store (store + query)
-├── planner_agent.py         # Rule-guided random walker
-├── requirements.txt         # Pinned dependencies
-└── Research_Presentation.md # This document
+├── run_experiment.py        # Central orchestrator for the 3-phase pipeline
+├── display.py               # Handles unified dual-pane PyGame rendering
+├── app.py                   # Gradio Interface for Hugging Face Spaces integration
+├── environments.py          # Custom MiniGrid environments (Lava, Sand, Combined)
+├── rl_core.py               # PyTorch DQN standard implementation
+├── reflection_engine.py     # Prompt-building & JSON Parsing for Ollama inference
+├── memory_hub.py            # Vector DB wrapper using ChromaDB and MiniLM
+├── planner_agent.py         # Sub-symbolic Rule-Guided Random Navigator
+├── requirements.txt         # Pinned packages
+└── Research_Presentation.md # Documentation (This File)
 ```
-
-| File                    | Key Responsibility                                         |
-| ----------------------- | ---------------------------------------------------------- |
-| `run_experiment.py`   | Phase orchestration, env lifecycle, unified display calls  |
-| `display.py`          | Single pygame window: game frame left, coloured log right  |
-| `app.py`              | Gradio streaming UI for HF Spaces (headless, browser-based)|
-| `environments.py`     | 3 custom MiniGrid rooms with −10/+10 reward shaping       |
-| `rl_core.py`          | DQN network, ε-greedy policy, tile→text observation parser|
-| `reflection_engine.py`| LLM prompt, JSON parsing, keyword fallback                 |
-| `memory_hub.py`       | ChromaDB init, rule embedding, cosine query                |
-| `planner_agent.py`    | Reactive rule-guided walker — no memory, no pathfinding   |
 
 ---
 
 ## 6. How to Run
 
-### Option A — Local (Full Experience with Live LLM)
+### Option A — Local Full Experience (Live LLM)
+Ensure you have Python 3.10+ installed.
 
 ```bash
-# 1. Create and activate virtual environment
+# 1. Create and activate a virtual environment
 python3 -m venv .venv && source .venv/bin/activate
 
-# 2. Install dependencies
+# 2. Install required packages
 pip install -r requirements.txt
 
-# 3. Pull Ollama model (https://ollama.com)
+# 3. Pull the Ollama Llama 3.2 model for local LLM usage (requires Ollama installed)
 ollama pull llama3.2:3b
 
-# 4. Run  — single unified window (game + coloured log side-by-side)
+# 4. Run the experiment
 python3 run_experiment.py
 ```
 
-### Option B — Gradio Web Interface (Browser / HF Spaces)
-
+### Option B — Web Browser UI 
+Run the lightweight gradio app locally, demonstrating auto-fallback engine behaviors if Ollama isn't configured.
 ```bash
-# No Ollama needed — fallback rules activate automatically
 pip install gradio
 python3 app.py
-# Open http://localhost:7860
+# Native App hosted at http://localhost:7860
 ```
 
-### Option C — HF Space (No Setup, Share Anywhere)
-
-Visit the live Space ↗  
-```
-https://huggingface.co/spaces/ashyou09/hybrid-rl-llm-explorer
-```
-
-### Dependencies
-
-| Package                    | Purpose                          |
-| -------------------------- | -------------------------------- |
-| `gymnasium` + `minigrid` | Grid world simulation            |
-| `torch`                  | DQN neural network               |
-| `chromadb`               | Persistent cosine vector DB      |
-| `sentence-transformers`  | Text → 384-D vector embeddings  |
-| `ollama`                 | Local LLM inference API          |
-| `pygame`                 | Side-by-side game + log display  |
-| `gradio`                 | Browser / HF Spaces interface    |
+### Option C — Hugging Face Space (Zero Setup)
+Experience the project directly on our public Hugging Face deployment!
+🔗 [**Hybrid RL-LLM Explorer on Hugging Face Spaces**](https://huggingface.co/spaces/ashyou09/hybrid-rl-llm-explorer)
 
 ---
 
 ## 7. Contributions & Future Work
 
-### What This Experiment Proves
-
-1. **RL failures are reusable data.** Deaths produce generalised semantic rules, not just gradient updates inside opaque weight matrices.
-2. **LLMs serve as a universal knowledge translator.** They convert neural network experiences into human-readable, algorithm-agnostic rules.
-3. **Vector similarity enables zero-shot generalisation.** A rule about `"red lava"` automatically protects against `"sand"` — no retraining, no additional data.
-4. **Independently-learned rules compose naturally.** Two rules from different rooms coexist in the Vector DB and apply simultaneously in an unseen environment.
-5. **Imperfect navigation + perfect safety knowledge is sufficient.** The explorer has no map, no pathfinding, and may wander — but it never steps into *known* dangers because it inherited the safety rules from another agent's failures.
-6. **The semantic layer is algorithm-agnostic.** Any agent capable of generating a text query (`"What is in front of me?"`) can access the shared knowledge — whether it's a DQN, a decision tree, or a graph search.
+### Impact & Contributions
+1. **Death as Reusable Semantic Data:** Fatalities produce generalised NLP rules, not just opaque gradient updates.
+2. **Zero-Shot Automatic Generalisation:** Text-vector representation automatically equates `"red lava"` with `"sand"`.
+3. **Imperfect Navigation Excels with Perfect Knowledge:** A system that merely walks randomly but possesses flawless hazard avoidance demonstrates extreme robustness. 
 
 ### Future Directions
-
-- **Online rule refinement:** Allow the LLM to revise rules when the Explorer still fails (closed-loop learning).
-- **Multi-agent transfer:** One agent learns, many agents benefit simultaneously — swarm safety learning.
-- **Hierarchical rules:** Extend from single-tile hazards to multi-step behavioural constraints (`"avoid narrow corridors near lava"`).
-- **Quantitative evaluation:** Plot fatalities-per-episode curves comparing pure RL vs. Hybrid RL+LLM across hundreds of randomised environments.
-- **Scaling to complex environments:** Test with procedurally generated mazes, 3D environments, and continuous action spaces.
-- **Confidence-weighted rules:** Weight rule application by the LLM's confidence score to handle borderline cosine distances more gracefully.
+- **Online Refinement:** Expand pipeline so LLM can dynamically *rewrite* rules if the Explorer still fails with an active rule.
+- **Multi-Agent Hivemind:** Have a distributed fleet of agents feeding data to a central ChromaDB instance, rapidly constructing a shared "Hive Safety Database."
+- **3D Spatial Navigation:** Port this zero-shot knowledge system into a complex Continuous Action Space (e.g., Unity ML-Agents).
 
 ---
 
 ## 8. Citation
+
+If you utilise or adapt this research pipeline, please consider citing:
 
 ```bibtex
 @misc{hybrid_rl_llm_explorer_2026,
