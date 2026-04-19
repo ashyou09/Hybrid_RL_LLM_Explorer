@@ -45,17 +45,24 @@ class UnifiedDisplay:
         self._last_frame = None
         self._phase      = ""
         self._alive      = True
+        self.overlay_visits = {}  # (x,y) -> count
+        self.grid_size      = 7
         self._orig_out   = sys.stdout
         sys.stdout = _Tee(self)
 
     def set_phase(self, t):
         self._phase = t
 
-    def render_frame(self, game_rgb=None):
+    def render_frame(self, game_rgb=None, overlay_visits=None, grid_size=None):
         if not self._alive:
             return
         if game_rgb is not None:
             self._last_frame = game_rgb
+        if overlay_visits is not None:
+            self.overlay_visits = overlay_visits
+        if grid_size is not None:
+            self.grid_size = grid_size
+            
         self._pump()
         self._draw()
 
@@ -115,6 +122,28 @@ class UnifiedDisplay:
             self.screen.blit(ov, (0, 0))
             self.screen.blit(
                 self.pfont.render(self._phase, True, C_GOLD), (10, 5))
+
+        # --- Grid Overlay (Penalties) ---
+        if self._last_frame is not None and self.overlay_visits:
+            # Calculate cell size
+            cell_w = self.GAME_W / self.grid_size
+            cell_h = self.HEIGHT / self.grid_size
+            
+            for (x, y), count in self.overlay_visits.items():
+                if count > 1: # Only show penalty if revisited
+                    # MiniGrid coordinates (x is column, y is row)
+                    # Screen coordinates: (x * cell_w, y * cell_h)
+                    penalty_text = f"-{(count-1) * 3}"
+                    txt_surf = self.font.render(penalty_text, True, (255, 255, 255))
+                    
+                    # Create a sub-surface for the number so it's more visible
+                    px = int(x * cell_w + cell_w//2 - txt_surf.get_width()//2)
+                    py = int(y * cell_h + cell_h//2 - txt_surf.get_height()//2)
+                    
+                    # Draw a tiny shadow/bg for readability
+                    pygame.draw.rect(self.screen, (0, 0, 0, 120), 
+                                     (px-2, py-2, txt_surf.get_width()+4, txt_surf.get_height()+4))
+                    self.screen.blit(txt_surf, (px, py))
 
         # Divider
         pygame.draw.rect(self.screen, DIV_CLR,

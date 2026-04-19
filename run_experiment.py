@@ -15,12 +15,12 @@ ChromaDB is wiped at both start AND end so every run is pristine.
 
 import time
 import gymnasium as gym
-import environments                          # registers custom rooms
-from rl_core           import DQNAgent, preprocess_obs
-from reflection_engine import analyze_failure_log, verify_rule
-from memory_hub        import MemoryHub
-from planner_agent     import OnlineExplorerAgent
-from display           import UnifiedDisplay
+import src.env.environments as environments                          # registers custom rooms
+from src.core.rl_core           import DQNAgent, preprocess_obs, parse_local_observation
+from src.agents.reflection_engine import analyze_failure_log, verify_rule
+from src.core.memory_hub        import MemoryHub
+from src.agents.planner_agent     import OnlineExplorerAgent
+from src.ui.display           import UnifiedDisplay
 from dataclasses import dataclass
 
 display = None   # global — set in __main__
@@ -28,9 +28,9 @@ display = None   # global — set in __main__
 @dataclass(frozen=True)
 class ExperimentTiming:
     step_delay_secs: float = 0.18          # visual speed per env step
-    learning_phase_secs: int = 40         # wall-clock seconds per learning phase
-    final_exam_secs: int = 120             # wall-clock seconds for phase 3
-    final_exam_max_episodes: int = 2       # how many phase 3 episodes at most
+    learning_phase_secs: int = 3600        # basically infinite time
+    final_exam_secs: int = 3600            # basically infinite time
+    final_exam_max_episodes: int = 1       # only need one successful run now
 
 TIMING = ExperimentTiming()
 
@@ -66,17 +66,49 @@ def run_learning_phase(env_name, agent, memory):
     while deaths < 2 and time.time() < deadline:
         episode += 1
         obs = env.reset()[0]
-        display.render_frame(env.render())
+        
+        from collections import defaultdict
+        revisit_counts = defaultdict(int)
+        
+        last_pos = None
+        grid_size = env.unwrapped.grid.width
+        display.render_frame(env.render(), overlay_visits=revisit_counts, grid_size=grid_size)
 
         for step in range(100):
             if time.time() >= deadline:
                 break
             state  = preprocess_obs(obs)
-            action = agent.select_action(state)
+            
+            # 🧠 LLM Knowledge Injection (Action Masking)
+            mask = [1.0, 1.0, 1.0]
+            local_text = parse_local_observation(obs["image"])
+            front_block = local_text.split(".")[0].replace("Front: ", "")
+            
+            if memory:
+                # Lowered threshold to 0.60 to be more aggressive with safety rules
+                rule = memory.query_local_context(front_block, threshold=0.60, silent=True)
+                if rule and rule.get("forbidden_action") == "Move Forward":
+                    print(f"\n  [🧠 LLM KNOWLEDGE] !!! DANGER: {front_block} !!! — applying HEAVY PENALTY.")
+                    mask = [1.0, 1.0, 0.0]  # Mask 'Move Forward'
+
+            action = agent.select_action(state, apply_mask=mask)
             display.wait(TIMING.step_delay_secs)
 
+            pos = tuple(env.unwrapped.agent_pos)
+            if pos != last_pos: # Only append penalty if we successfully moved!
+                if pos in revisit_counts:
+                    revisit_counts[pos] += 1
+                    count = revisit_counts[pos]
+                    print(f"  [⚠ Revisit] {pos} x{count} | penalty=-3.0")
+                    if count > 100:
+                        print(f"  [🛑 GAME OVER] hallucinate")
+                        break
+                else:
+                    revisit_counts[pos] = 1
+            last_pos = pos
+
             next_obs, reward, terminated, truncated, _ = env.step(action)
-            display.render_frame(env.render())
+            display.render_frame(env.render(), overlay_visits=revisit_counts, grid_size=grid_size)
 
             if reward <= -10:
                 deaths += 1
@@ -87,6 +119,7 @@ def run_learning_phase(env_name, agent, memory):
                     agent.trigger_failure_log(env_name, obs["image"], action)
 
                     display.set_phase(f"LLM Reflection — {label}")
+                    from src.agents.reflection_engine import analyze_failure_log, verify_rule
                     rule_data = analyze_failure_log()
 
                     if rule_data and verify_rule(rule_data):
@@ -120,15 +153,20 @@ def run_learning_phase(env_name, agent, memory):
             ep += 1
             env = gym.make(env_name, render_mode="rgb_array")
             obs = env.reset()[0]
-            display.render_frame(env.render())
-            explorer = OnlineExplorerAgent(memory)
+            grid_size = env.unwrapped.grid.width
+            explorer = OnlineExplorerAgent(memory, env_name=env_name)
+            display.render_frame(env.render(), overlay_visits=explorer.revisit_counts, grid_size=grid_size)
             print(f"  [Truth] Episode {ep} starting…")
 
             while time.time() < deadline:
                 display.wait(TIMING.step_delay_secs)
                 action = explorer.act(env, obs)
                 obs, reward, terminated, truncated, _ = env.step(action)
-                display.render_frame(env.render())
+                display.render_frame(env.render(), overlay_visits=explorer.revisit_counts, grid_size=grid_size)
+
+                if explorer.force_stop:
+                    print("  [🛑] Revisit penalty limit reached — ending episode.")
+                    break
 
                 if reward >= 10:
                     print(f"\n  [\033[92m✓ TRUTH CONFIRMED\033[0m] Rule works — no deaths!")
@@ -139,6 +177,7 @@ def run_learning_phase(env_name, agent, memory):
                 if terminated or truncated:
                     break
 
+            explorer.episode_summary()
             env.close()
 
     # If we haven't learned a rule yet but ran out of time, just
@@ -170,7 +209,11 @@ def run_learning_phase(env_name, agent, memory):
 # ──────────────────────────────────────────────────────────
 
 def run_final_exam(env_name, memory):
-    """Run Phase 3 for up to TIMING.final_exam_secs wall-clock seconds."""
+    """Run Phase 3 for up to TIMING.final_exam_secs wall-clock seconds.
+    
+    Research Feature: Multi-death episodic analysis.
+    If explorer dies 3+ times, collect all death paths and send to LLM
+    for strategic pattern analysis."""
     _require_display()
     display.set_phase("PHASE 3 — FINAL EXAM")
 
@@ -182,34 +225,53 @@ def run_final_exam(env_name, memory):
     deadline = time.time() + TIMING.final_exam_secs
     episode  = 0
 
-    while time.time() < deadline and episode < TIMING.final_exam_max_episodes:
+    # User requested to keep running until it wins, so we drop the max episode limit
+    while True:
         episode += 1
         env      = gym.make(env_name, render_mode="rgb_array")
-        explorer = OnlineExplorerAgent(memory)
+        explorer = OnlineExplorerAgent(memory, env_name=env_name)
         obs      = env.reset()[0]
-        display.render_frame(env.render())
+        grid_size = env.unwrapped.grid.width
+        display.render_frame(env.render(), overlay_visits=explorer.revisit_counts, grid_size=grid_size)
         print(f"\n  [Phase 3] Episode {episode} starting…")
 
         step = 0
-        while time.time() < deadline:
+        while True:
             display.wait(TIMING.step_delay_secs)
             action = explorer.act(env, obs)
             obs, reward, terminated, truncated, _ = env.step(action)
-            display.render_frame(env.render())
+            display.render_frame(env.render(), overlay_visits=explorer.revisit_counts, grid_size=grid_size)
             step += 1
 
-            if reward <= -10:
-                print(f"  [Agent C] Episode {episode} FAILED — stepped into a hazard after {step} steps.")
+            if explorer.force_stop:
+                print("  [🛑] Revisit penalty limit reached — ending episode.")
                 break
+
+            if reward <= -10:
+                # Agent died — record the death for multi-death analysis
+                failure_pos = tuple(env.unwrapped.agent_pos)
+                explorer.record_death(failure_pos)
+                print(f"  [💀] Episode {episode}: FAILED — stepped into hazard at {failure_pos} after {step} steps.")
+                
+                # Check if we've accumulated 3 deaths for meta-analysis
+                if explorer.episode_deaths >= 3:
+                    print("\n  [📊] Three deaths recorded! Requesting LLM meta-analysis…")
+                    explorer.analyze_multiple_deaths()
+                
+                break
+
             if reward >= 10:
                 print(f"  [\033[92m✓ FLAWLESS SUCCESS\033[0m] Episode {episode} goal reached in {step} steps!")
-                break
+                explorer.episode_summary()
+                env.close()
+                print(f"\n  [Phase 3] Game WON! Showcase complete.")
+                return
+
             if terminated or truncated:
                 break
 
+        explorer.episode_summary()
         env.close()
-
-    print(f"\n  [Phase 3] {TIMING.final_exam_secs}-second showcase complete — {episode} episode(s) played.")
 
 
 # ──────────────────────────────────────────────────────────

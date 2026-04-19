@@ -83,13 +83,14 @@ class HeadlessDisplay:
 _running = False
 _thread  = None
 
+
 def run_experiment_thread():
     global _running
     try:
-        import environments
+        import src.env.environments as environments
         import gymnasium as gym
-        from rl_core           import DQNAgent
-        from memory_hub        import MemoryHub
+        from src.core.rl_core           import DQNAgent
+        from src.core.memory_hub        import MemoryHub
 
         # Inject headless display as the global `display` in run_experiment
         import run_experiment as exp_mod
@@ -100,9 +101,6 @@ def run_experiment_thread():
 
         memory  = MemoryHub()
         agent_a = DQNAgent()
-
-        def make_env(name):
-            return gym.make(name, render_mode="rgb_array")
 
         # ── Phase 1: Lava Room ──────────────────────────────
         disp.set_phase("PHASE 1 — Lava Room (RL Exploration)")
@@ -122,6 +120,71 @@ def run_experiment_thread():
         exp_mod.run_final_exam("MiniGrid-CombinedTesting-v0", memory)
 
         LOG_Q.put("Experiment complete! ✓")
+
+    except Exception as e:
+        LOG_Q.put(f"[ERROR] {e}")
+    finally:
+        _running = False
+
+
+def run_dfs_thread():
+    """Skip RL phase entirely — run OnlineExplorerAgent directly through all
+    3 rooms using DFS + LLM periodic consultation (no prior rule learning)."""
+    global _running
+    try:
+        import src.env.environments as environments
+        import gymnasium as gym
+        from src.core.memory_hub          import MemoryHub
+        from src.agents.planner_agent     import OnlineExplorerAgent
+
+        disp   = HeadlessDisplay()
+        memory = MemoryHub()
+
+        rooms = [
+            "MiniGrid-LavaRoom-v0",
+            "MiniGrid-QuicksandRoom-v0",
+            "MiniGrid-CombinedTesting-v0",
+        ]
+        labels = ["Room 1 — Lava", "Room 2 — Sand", "Room 3 — Final Exam"]
+        timeouts = [40, 40, 120]
+
+        for room, label, timeout in zip(rooms, labels, timeouts):
+            disp.set_phase(f"DFS Explorer — {label}")
+            LOG_Q.put("─" * 48)
+            LOG_Q.put(f"[DFS] Entering {room}")
+            LOG_Q.put("─" * 48)
+
+            deadline = time.time() + timeout
+            episode  = 0
+
+            while time.time() < deadline:
+                episode += 1
+                env      = gym.make(room, render_mode="rgb_array")
+                explorer = OnlineExplorerAgent(memory, env_name=room)
+                obs      = env.reset()[0]
+                disp.render_frame(env.render())
+                LOG_Q.put(f"[DFS] Episode {episode} starting…")
+
+                while time.time() < deadline:
+                    disp.wait(0.18)
+                    action = explorer.act(env, obs)
+                    obs, reward, terminated, truncated, _ = env.step(action)
+                    disp.render_frame(env.render())
+
+                    if reward >= 10:
+                        LOG_Q.put(f"[DFS] ✓ Goal reached in episode {episode}!")
+                        break
+                    if reward <= -10:
+                        LOG_Q.put(f"[DFS] ✗ Hazard hit in episode {episode}.")
+                        break
+                    if terminated or truncated:
+                        break
+
+                explorer.episode_summary()
+                env.close()
+                break   # one episode per room in headless mode
+
+        LOG_Q.put("DFS run complete! ✓")
 
     except Exception as e:
         LOG_Q.put(f"[ERROR] {e}")
@@ -164,7 +227,7 @@ def colour_line(line):
 _log_html_lines = []
 _BLANK_FRAME = np.zeros((256, 256, 3), dtype=np.uint8)
 
-def start_and_stream():
+def start_and_stream(mode="hybrid"):
     global _running, _thread, _log_html_lines
 
     if _running:
@@ -182,7 +245,10 @@ def start_and_stream():
         try: FRAME_Q.get_nowait()
         except: pass
 
-    _thread = threading.Thread(target=run_experiment_thread, daemon=True)
+    _thread = threading.Thread(
+        target=run_dfs_thread if mode == "dfs" else run_experiment_thread,
+        daemon=True,
+    )
     _thread.start()
 
     last_frame = _BLANK_FRAME
@@ -245,6 +311,8 @@ body { background: #0d1117 !important; }
 .gr-button { font-family: Monaco, monospace !important; }
 #title { text-align:center; font-family: Monaco, monospace; color:#58a6ff; }
 #subtitle { text-align:center; font-family: Monaco, monospace; color:#6e7681; font-size:14px; }
+#btn-start { min-width: 200px; }
+#btn-dfs   { min-width: 200px; }
 """
 
 with gr.Blocks(css=CSS, title="Hybrid RL→LLM→Explorer") as demo:
@@ -267,11 +335,22 @@ with gr.Blocks(css=CSS, title="Hybrid RL→LLM→Explorer") as demo:
         with gr.Column(scale=1):
             log_out = gr.HTML(
                 label="Live Log",
-                value="<p style='color:#6e7681;font-family:Monaco'>Press ▶ Run to start…</p>",
+                value="<p style='color:#6e7681;font-family:Monaco'>Choose a mode and press Start or Use DFS…</p>",
             )
 
-    with gr.Row():
-        run_btn = gr.Button("▶  Run Experiment", variant="primary", size="lg")
+    with gr.Row(equal_height=True):
+        start_btn = gr.Button(
+            "▶  Start  (Hybrid RL → LLM → Explorer)",
+            variant="primary",
+            size="lg",
+            elem_id="btn-start",
+        )
+        dfs_btn = gr.Button(
+            "🗺  Use DFS  (Pure DFS + LLM Hints)",
+            variant="secondary",
+            size="lg",
+            elem_id="btn-dfs",
+        )
 
     gr.HTML("""
     <div style='font-family:Monaco;font-size:11px;color:#6e7681;text-align:center;margin-top:8px'>
@@ -280,8 +359,14 @@ with gr.Blocks(css=CSS, title="Hybrid RL→LLM→Explorer") as demo:
     </div>
     """)
 
-    run_btn.click(
-        fn=start_and_stream,
+    start_btn.click(
+        fn=lambda: start_and_stream(mode="hybrid"),
+        inputs=[],
+        outputs=[frame_out, log_out],
+    )
+
+    dfs_btn.click(
+        fn=lambda: start_and_stream(mode="dfs"),
         inputs=[],
         outputs=[frame_out, log_out],
     )
