@@ -1,308 +1,266 @@
-"""Reflection logic for turning failures into simple safety rules."""
+"""
+reflection_engine.py — LLM Rule Synthesis from Learning Log
+=============================================================
+Single LLM call after Phase 1. Reads learning_log.json and generates
+plain-language navigation rules the agent can follow in Phase 3.
+
+Key fix: the prompt now includes a concrete JSON example so the LLM
+always returns the exact forbidden_action strings needed.
+"""
 
 import json
+import os
+
+LEARNING_LOG  = "learning_log.json"
+_VALID_ACTIONS = {"Move Forward", "Turn Left", "Turn Right"}
 
 
-def _extract_precise_trigger(state_context: str, fatal_action: str) -> str | None:
-    """Extract a concrete object label from parser output text."""
-    if not state_context:
-        return None
+# ─────────────────────────────────────────────────────────────
+#  Public API
+# ─────────────────────────────────────────────────────────────
 
-    # Expected format from rl_core.parse_local_observation():
-    # "Front: X. Left: Y. Right: Z."
-    parts = {}
-    for chunk in state_context.split("."):
-        chunk = chunk.strip()
-        if not chunk:
-            continue
-        if chunk.startswith("Front:"):
-            parts["Front"] = chunk.replace("Front:", "").strip()
-        elif chunk.startswith("Left:"):
-            parts["Left"] = chunk.replace("Left:", "").strip()
-        elif chunk.startswith("Right:"):
-            parts["Right"] = chunk.replace("Right:", "").strip()
+def synthesize_rules_from_log(log_path: str = LEARNING_LOG) -> list[dict]:
+    """Read the learning log -> call LLM once -> return validated rule list.
 
-    def _is_concrete(label: str | None) -> bool:
-        if not label:
-            return False
-        low = label.lower()
-        return low not in {"wall", "empty space", "unknown"}
+    Each returned rule dict:
+        {
+            "rule":             str,   # plain-language sentence
+            "forbidden_action": str,   # "Move Forward" | "Turn Left" | "Turn Right"
+            "trigger_feature":  str,   # 1-3 word tile label, e.g. "red lava"
+        }
+    """
+    if not os.path.exists(log_path):
+        print("[Reflection Engine] No learning log found — nothing to synthesize.")
+        return []
 
-    if fatal_action == "Move Forward" and _is_concrete(parts.get("Front")):
-        return parts["Front"]
+    with open(log_path) as f:
+        log_entries = json.load(f)
 
-    # Fallback: pick the first concrete thing we saw.
-    for k in ("Front", "Left", "Right"):
-        if _is_concrete(parts.get(k)):
-            return parts[k]
-    return None
+    if not log_entries:
+        print("[Reflection Engine] Learning log is empty.")
+        return []
+
+    print(f"\n[Reflection Engine] Synthesizing rules from {len(log_entries)} log entries...")
+    _print_log_summary(log_entries)
+
+    prompt = _build_prompt(log_entries)
+    rules  = _call_llm(prompt)
+    valid  = [_normalise(r) for r in rules if _normalise(r) is not None]
+
+    if valid:
+        print(f"\n[Reflection Engine] {len(valid)} valid rule(s) from LLM:")
+        for i, r in enumerate(valid, 1):
+            print(f"  Rule {i}: [{r['trigger_feature']}] {r['rule']}")
+    else:
+        print("[Reflection Engine] LLM gave no usable rules — using deterministic fallback.")
+        valid = _fallback_rules(log_entries)
+
+    return valid
 
 
-def analyze_failure_log(log_path="failure_log.json"):
-    """Build a rule from failure_log.json with deterministic trigger extraction."""
+# ─────────────────────────────────────────────────────────────
+#  Prompt construction
+# ─────────────────────────────────────────────────────────────
+
+def _print_log_summary(entries: list):
+    deaths    = sum(1 for e in entries if e["event"] == "tile_death")
+    auto_kill = sum(1 for e in entries if e["event"] == "auto_death")
+    success   = sum(1 for e in entries if e["event"] == "success")
+    print(f"  Log: {deaths} tile-death(s), {auto_kill} auto-death(s), {success} success(es).")
+
+
+def _build_prompt(entries: list) -> str:
+    lines = []
+    for e in entries:
+        ev   = e["event"]
+        tile = e.get("tile_that_killed", "unknown")
+        steps = e.get("total_steps", "?")
+        pen   = e.get("total_penalty", "?")
+
+        if ev == "tile_death":
+            lines.append(
+                f"- Stepped into '{tile}' and DIED instantly "
+                f"(after {steps} steps, total penalty {pen})."
+            )
+        elif ev == "auto_death":
+            hp = e.get("high_penalty_tile", tile)
+            lines.append(
+                f"- Was FORCE-KILLED after revisiting the same '{hp}' tile too many times "
+                f"(cumulative penalty on that tile reached -60, happened after {steps} steps)."
+            )
+        elif ev == "success":
+            lines.append(f"- Successfully reached the GREEN GOAL in {steps} steps.")
+
+    experience = "\n".join(lines) or "No experience logged."
+
+    # Use a very explicit prompt with a filled-in example so the LLM
+    # knows EXACTLY what format to produce — especially forbidden_action.
+    prompt = f"""\
+You are a safety-rule generator for a grid-world navigation agent.
+The agent explored a room and had these experiences:
+
+{experience}
+
+Game rules you MUST reflect in your output:
+- Every step costs -3 penalty. Score starts at 0, decreases each step.
+- Stepping onto 'red lava' deals -10 and kills the agent instantly.
+- Revisiting the same tile too many times eventually force-kills the agent (-60 threshold).
+- The green goal tile gives +10 and wins the game.
+- The agent can only do: Turn Left, Turn Right, Move Forward.
+
+Your task: output a JSON object with a "rules" array.
+Each rule must have exactly these three fields:
+  - "rule"             : a clear plain-English sentence explaining what to avoid and why
+  - "forbidden_action" : MUST be exactly one of -> "Move Forward"  "Turn Left"  "Turn Right"
+  - "trigger_feature"  : a short 1-3 word label for what the agent sees (e.g. "red lava")
+
+EXAMPLE (use this exact structure):
+{{
+  "rules": [
+    {{
+      "rule": "Never move forward into red lava — it causes instant death.",
+      "forbidden_action": "Move Forward",
+      "trigger_feature": "red lava"
+    }},
+    {{
+      "rule": "Avoid revisiting the same tile repeatedly — too many revisits force-kills the agent.",
+      "forbidden_action": "Move Forward",
+      "trigger_feature": "revisited tile"
+    }}
+  ]
+}}
+
+Now generate rules based on the agent's actual experiences above.
+Output ONLY valid JSON — no explanation, no markdown fences, no extra text.
+"""
+    return prompt
+
+
+# ─────────────────────────────────────────────────────────────
+#  LLM call
+# ─────────────────────────────────────────────────────────────
+
+def _call_llm(prompt: str) -> list[dict]:
+    """Try Ollama llama3.2:3b. Returns list of raw rule dicts."""
     try:
-        with open(log_path, "r") as f:
-            data = json.load(f)
-    except FileNotFoundError:
-        print(f"[Reflection Engine] {log_path} not found.")
+        import ollama
+        print("  [LLM] Calling llama3.2:3b...")
+        resp = ollama.chat(
+            model="llama3.2:3b",
+            messages=[{"role": "user", "content": prompt}],
+        )
+        raw = resp["message"]["content"].strip()
+
+        # Strip markdown fences if LLM wraps in ```json ... ```
+        if "```" in raw:
+            lines = [l for l in raw.splitlines() if not l.strip().startswith("```")]
+            raw = "\n".join(lines).strip()
+
+        # Find the JSON object (sometimes LLM adds preamble)
+        start = raw.find("{")
+        end   = raw.rfind("}") + 1
+        if start >= 0 and end > start:
+            raw = raw[start:end]
+
+        data  = json.loads(raw)
+        rules = data.get("rules", [])
+        print(f"  [LLM] Received {len(rules)} candidate rule(s).")
+        return rules
+
+    except json.JSONDecodeError as exc:
+        print(f"  [LLM] JSON parse error: {exc}")
+    except Exception as exc:
+        print(f"  [LLM] Unavailable ({exc.__class__.__name__}: {exc}). Using fallback.")
+
+    return []
+
+
+# ─────────────────────────────────────────────────────────────
+#  Normalise + validate a single rule dict
+# ─────────────────────────────────────────────────────────────
+
+def _normalise(r) -> dict | None:
+    """Title-case forbidden_action and validate. Returns None if invalid."""
+    if not isinstance(r, dict):
+        return None
+    if not r.get("rule") or not r.get("trigger_feature"):
         return None
 
-    trigger = _extract_precise_trigger(data.get("state_context", ""), data.get("fatal_action", ""))
-    if not trigger:
-        # Last-resort compatibility fallback (rare for malformed logs).
-        trigger = "sand" if "sand" in data.get("state_context", "").lower() else "red lava"
+    # Normalise capitalisation ("move forward" -> "Move Forward")
+    raw_action  = str(r.get("forbidden_action", "")).strip()
+    normalised  = " ".join(w.capitalize() for w in raw_action.split())
+    if normalised not in _VALID_ACTIONS:
+        # Try common LLM mistakes: "forward" -> "Move Forward"
+        if "forward" in raw_action.lower():
+            normalised = "Move Forward"
+        elif "left" in raw_action.lower():
+            normalised = "Turn Left"
+        elif "right" in raw_action.lower():
+            normalised = "Turn Right"
+        else:
+            print(f"  [Validation] Dropping rule — bad forbidden_action: {raw_action!r}")
+            return None
 
     return {
-        "rule":             f"Avoid moving forward into {trigger}",
-        "forbidden_action": data.get("fatal_action", "Move Forward"),
-        "trigger_feature":  trigger,
+        "rule":             str(r["rule"]).strip(),
+        "forbidden_action": normalised,
+        "trigger_feature":  str(r["trigger_feature"]).strip().lower(),
     }
 
 
-def verify_rule(rule_data, trials=1):
-    """Quick sanity check for generated rule shape and action value."""
-    print(f"\n[Verification] Testing rule across {trials} mock episodes...")
-    import time
-    for i in range(1, trials + 1):
-        print(f"  → Trial {i}/{trials}: Avoiding '{rule_data['trigger_feature']}'… OK")
-        time.sleep(0.4)
+# ─────────────────────────────────────────────────────────────
+#  Deterministic fallback rules
+# ─────────────────────────────────────────────────────────────
 
+def _fallback_rules(entries: list) -> list[dict]:
+    """Build basic rules from log facts without needing the LLM."""
+    rules    = []
+    seen_tiles = set()
+
+    for e in entries:
+        tile = e.get("tile_that_killed", "")
+        ev   = e.get("event", "")
+
+        if ev == "tile_death" and tile and tile not in seen_tiles:
+            seen_tiles.add(tile)
+            rules.append({
+                "rule":             f"Never move forward into {tile} — it causes instant death.",
+                "forbidden_action": "Move Forward",
+                "trigger_feature":  tile.lower(),
+            })
+
+        if ev == "auto_death" and "auto_revisit" not in seen_tiles:
+            seen_tiles.add("auto_revisit")
+            hp = e.get("high_penalty_tile", "this tile")
+            rules.append({
+                "rule": (
+                    f"Avoid staying on the same tile repeatedly — "
+                    f"after enough revisits the game force-kills the agent. "
+                    f"Always move on to a different tile."
+                ),
+                "forbidden_action": "Move Forward",
+                "trigger_feature":  "revisited tile",
+            })
+
+    if not rules:
+        rules.append({
+            "rule":             "Never move forward into red lava — it causes instant death.",
+            "forbidden_action": "Move Forward",
+            "trigger_feature":  "red lava",
+        })
+
+    return rules
+
+
+# ─────────────────────────────────────────────────────────────
+#  Legacy shim
+# ─────────────────────────────────────────────────────────────
+
+def verify_rule(rule_data, trials=1) -> bool:
     if not isinstance(rule_data, dict):
-        print("[Verification] FAIL — rule is not a dict.")
         return False
-    if rule_data.get("forbidden_action") not in ("Turn Left", "Turn Right", "Move Forward"):
-        print("[Verification] FAIL — unknown action.")
+    if rule_data.get("forbidden_action") not in _VALID_ACTIONS:
         return False
     if not rule_data.get("trigger_feature"):
-        print("[Verification] FAIL — missing trigger_feature.")
         return False
-
-    print("[Verification] PASSED. Rule is valid.\n")
     return True
-
-
-# ──────────────────────────────────────────────────────────────────
-# Periodic LLM Navigation Consultant
-# ──────────────────────────────────────────────────────────────────
-
-def get_navigation_hint(payload: dict) -> dict | None:
-    """Send a trajectory payload to llama3.2:3b and request one navigation
-    rule. Returns a rule dict compatible with MemoryHub.store_verified_rule(),
-    or None if the LLM returns no useful hint.
-
-    Falls back to a deterministic heuristic when Ollama is unavailable.
-
-    Payload schema:
-        {
-          "environment": str,
-          "total_steps": int,
-          "unique_tiles_visited": int,
-          "accumulated_revisit_penalty": float,
-          "top_revisited_cells": list[tuple],
-          "trajectory": list[str],   # human-readable step lines
-        }
-    """
-
-    env_name   = payload.get("environment", "unknown env")
-    steps      = payload.get("total_steps", 0)
-    unique     = payload.get("unique_tiles_visited", 0)
-    penalty    = payload.get("accumulated_revisit_penalty", 0.0)
-    top_rev    = payload.get("top_revisited_cells", [])
-    traj_lines = payload.get("trajectory", [])
-
-    traj_summary = "\n".join(traj_lines[-10:]) or "no steps recorded"
-    top_rev_str  = ", ".join(f"pos{p}×{c}" for p, c in top_rev) or "none"
-
-    prompt = (
-        "You are a navigation advisor for an autonomous grid-world agent.\n"
-        f"Environment: {env_name}\n"
-        f"Steps taken: {steps}, Unique tiles visited: {unique}\n"
-        f"Revisit penalty accumulated: {penalty:.1f} "
-        "(each revisit past step 10 costs −1 × revisit_count)\n"
-        f"Most revisited cells: {top_rev_str}\n\n"
-        "Recent trajectory (step: pos, front tile, action taken, revisit?):\n"
-        f"{traj_summary}\n\n"
-        "Based on the trajectory and penalty, give ONE concise navigation rule "
-        "to help the agent escape loops and explore more efficiently.\n"
-        "Output ONLY a valid JSON object with exactly these keys: "
-        "rule, forbidden_action, trigger_feature.\n"
-        "forbidden_action must be one of: Turn Left, Turn Right, Move Forward.\n"
-        "trigger_feature must be a short 1-3 word label the agent might see "
-        "(e.g. 'revisited tile', 'empty space', 'red lava')."
-    )
-
-    # ── Try Ollama first ────────────────────────────────────────
-    try:
-        import ollama
-        print(f"  [LLM] Asking llama3.2 for navigation hint (step {steps})…")
-        resp = ollama.chat(
-            model="llama3.2:3b",
-            messages=[{"role": "user", "content": prompt}],
-        )
-        raw = resp["message"]["content"].strip()
-
-        # Strip markdown fences if present
-        if raw.startswith("```"):
-            raw = "\n".join(
-                line for line in raw.splitlines()
-                if not line.strip().startswith("```")
-            ).strip()
-
-        data = json.loads(raw)
-        rule  = data.get("rule", "").strip()
-        action = data.get("forbidden_action", "").strip()
-        trigger = data.get("trigger_feature", "").strip()
-
-        if rule and action and trigger:
-            print(f"  [LLM] Navigation hint: {rule}")
-            return {
-                "rule":             rule,
-                "forbidden_action": action,
-                "trigger_feature":  trigger,
-            }
-
-        print("  [LLM] Response missing required fields — using fallback.")
-
-    except Exception as exc:
-        print(f"  [LLM] Ollama unavailable ({exc.__class__.__name__}). Using fallback.")
-
-    # ── Deterministic fallback ──────────────────────────────────
-    # If the agent has accumulated revisit penalty, suggest avoiding revisits.
-    if penalty < -2.0 or (top_rev and top_rev[0][1] >= 3):
-        return {
-            "rule":             "Avoid moving forward into already-explored tiles to reduce looping",
-            "forbidden_action": "Move Forward",
-            "trigger_feature":  "revisited tile",
-        }
-
-    # Generic: encourage turning when stuck
-    return None
-
-
-# ──────────────────────────────────────────────────────────────────
-# Multi-Death Episodic Analysis: Pattern Recognition Across Failed Attempts
-# ──────────────────────────────────────────────────────────────────
-
-def analyze_multi_death_pattern(payload: dict) -> dict | None:
-    """Analyze pathfinding failures across multiple episodes.
-    
-    Called when agent dies 3+ times in succession in Phase 3.
-    Sends cross-episode failure patterns to LLM for meta-strategic guidance.
-    
-    Payload schema:
-        {
-          "environment": str,
-          "analysis_type": "multi_death_episodic",
-          "death_count": int,
-          "death_summaries": list[str],   # human-readable death descriptions
-          "all_death_records": list[dict], # detailed data from each death
-        }
-    
-    Returns a strategic navigation rule (dict) or None if LLM unavailable.
-    """
-    
-    env_name = payload.get("environment", "unknown env")
-    death_count = payload.get("death_count", 0)
-    death_summaries = payload.get("death_summaries", [])
-    all_records = payload.get("all_death_records", [])
-    
-    # Build a comprehensive death pattern analysis
-    summaries_text = "\n".join(f"  {s}" for s in death_summaries) or "no deaths recorded"
-    
-    # Extract common failure locations
-    failure_locs = [r.get("failure_location") for r in all_records]
-    top_failures = {}
-    for loc in failure_locs:
-        top_failures[loc] = top_failures.get(loc, 0) + 1
-    
-    failure_pattern = ", ".join(
-        f"pos{loc}×{count}" for loc, count in sorted(
-            top_failures.items(), key=lambda kv: kv[1], reverse=True
-        )[:3]
-    ) or "scattered"
-    
-    # Average penalty trend (worsening or improving?)
-    penalties = [r.get("revisit_penalty", 0.0) for r in all_records]
-    penalty_trend = "worsening" if penalties and penalties[-1] < penalties[0] else "stable/improving"
-    
-    prompt = (
-        "You are a strategic navigation advisor analyzing REPEATED FAILURES.\n"
-        f"Environment: {env_name}\n"
-        f"Number of consecutive deaths: {death_count}\n\n"
-        "Death sequence:\n"
-        f"{summaries_text}\n\n"
-        f"Most common failure locations: {failure_pattern}\n"
-        f"Penalty trend: {penalty_trend}\n\n"
-        "Analyze the pattern across these failures. What structural or strategic "
-        "lesson can the agent learn? For example:\n"
-        "  - Is there a bottleneck or dead end being repeatedly hit?\n"
-        "  - Are revisits getting worse, indicating convergence to local minima?\n"
-        "  - Should the agent avoid certain tile types or patterns?\n\n"
-        "Output ONLY a valid JSON object with exactly these keys: "
-        "rule, forbidden_action, trigger_feature.\n"
-        "The rule should describe a STRATEGIC PATTERN to avoid, not just a single tile.\n"
-        "For example: rule='Avoid moving toward cluster of revisited tiles',\n"
-        "             trigger_feature='high_revisit_density'.\n"
-        "forbidden_action must be one of: Turn Left, Turn Right, Move Forward."
-    )
-    
-    # ── Try Ollama for multi-death analysis ──────────────────────
-    try:
-        import ollama
-        print(f"  [Multi-Death LLM] Analyzing {death_count} deaths for strategic pattern…")
-        resp = ollama.chat(
-            model="llama3.2:3b",
-            messages=[{"role": "user", "content": prompt}],
-        )
-        raw = resp["message"]["content"].strip()
-        
-        # Strip markdown fences if present
-        if raw.startswith("```"):
-            raw = "\n".join(
-                line for line in raw.splitlines()
-                if not line.strip().startswith("```")
-            ).strip()
-        
-        data = json.loads(raw)
-        rule = data.get("rule", "").strip()
-        action = data.get("forbidden_action", "").strip()
-        trigger = data.get("trigger_feature", "").strip()
-        
-        if rule and action and trigger:
-            print(f"  [Multi-Death Strategy] {rule}")
-            return {
-                "rule": rule,
-                "forbidden_action": action,
-                "trigger_feature": trigger,
-            }
-        
-        print("  [Multi-Death LLM] Response incomplete — using fallback.")
-    
-    except Exception as exc:
-        print(f"  [Multi-Death] Ollama unavailable ({exc.__class__.__name__}). Using fallback.")
-    
-    # ── Deterministic fallback heuristic ──────────────────────────
-    # If failures cluster in same region, suggest avoiding that area
-    if len(top_failures) <= 2:
-        # Very few failure locations → likely hitting same obstacle repeatedly
-        return {
-            "rule": "Failure cluster detected — try alternative routes by preferring unvisited directions",
-            "forbidden_action": "Move Forward",
-            "trigger_feature": "failure_hotspot",
-        }
-    
-    # If revisit penalty worsening, focus on breaking loops
-    if penalty_trend == "worsening":
-        return {
-            "rule": "Looping behavior intensifying — avoid revisiting tiles at all costs",
-            "forbidden_action": "Move Forward",
-            "trigger_feature": "loop_escalation",
-        }
-    
-    # Generic multi-death guidance
-    return {
-        "rule": "Multiple failures detected — prioritize reaching new, unexplored regions",
-        "forbidden_action": "Move Forward",
-        "trigger_feature": "repeated_failure",
-    }
-

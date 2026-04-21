@@ -1,0 +1,101 @@
+[
+  {
+    "phase": 1,
+    "environment": "MiniGrid-LavaRoom-v0",
+    "event": "success",
+    "tile_that_killed": "none",
+    "auto_death": false,
+    "total_steps": 19,
+    "total_penalty": -57.0
+  },
+  {
+    "phase": 1,
+    "environment": "MiniGrid-LavaRoom-v0",
+    "event": "tile_death",
+    "tile_that_killed": "red lava",
+    "auto_death": false,
+    "high_penalty_tile": "none",
+    "total_steps": 17,
+    "total_penalty": -63.0
+  },
+  {
+    "phase": 1,
+    "environment": "MiniGrid-LavaRoom-v0",
+    "event": "tile_death",
+    "tile_that_killed": "red lava",
+    "auto_death": false,
+    "high_penalty_tile": "none",
+    "total_steps": 12,
+    "total_penalty": -54.0
+  },
+  {
+    "phase": 1,
+    "environment": "MiniGrid-LavaRoom-v0",
+    "event": "tile_death",
+    "tile_that_killed": "red lava",
+    "auto_death": false,
+    "high_penalty_tile": "none",
+    "total_steps": 1,
+    "total_penalty": -3.0
+  },
+  {
+    "phase": 1,
+    "environment": "MiniGrid-LavaRoom-v0",
+    "event": "tile_death",
+    "tile_that_killed": "red lava",
+    "auto_death": false,
+    "high_penalty_tile": "none",
+    "total_steps": 10,
+    "total_penalty": -42.0
+  },
+  {
+    "phase": 1,
+    "environment": "MiniGrid-LavaRoom-v0",
+    "event": "tile_death",
+    "tile_that_killed": "red lava",
+    "auto_death": false,
+    "high_penalty_tile": "none",
+    "total_steps": 4,
+    "total_penalty": -12.0
+  },
+  {
+    "phase": 1,
+    "environment": "MiniGrid-LavaRoom-v0",
+    "event": "tile_death",
+    "tile_that_killed": "red lava",
+    "auto_death": false,
+    "high_penalty_tile": "none",
+    "total_steps": 13,
+    "total_penalty": -57.0
+  },
+  {
+    "phase": 1,
+    "environment": "MiniGrid-LavaRoom-v0",
+    "event": "tile_death",
+    "tile_that_killed": "red lava",
+    "auto_death": false,
+    "high_penalty_tile": "none",
+    "total_steps": 10,
+    "total_penalty": -30.0
+  },
+  {
+    "phase": 1,
+    "environment": "MiniGrid-LavaRoom-v0",
+    "event": "tile_death",
+    "tile_that_killed": "red lava",
+    "auto_death": false,
+    "high_penalty_tile": "none",
+    "total_steps": 5,
+    "total_penalty": -15.0
+  },
+  {
+    "phase": 1,
+    "environment": "MiniGrid-LavaRoom-v0",
+    "event": "tile_death",
+    "tile_that_killed": "red lava",
+    "auto_death": false,
+    "high_penalty_tile": "none",
+    "total_steps": 2,
+    "total_penalty": -6.0
+  }
+]

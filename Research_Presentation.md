@@ -1,3 +1,36 @@
+# Research Presentation (Stepwise Draft)
+
+## Goal
+
+Stabilize experiment by running one phase at a time.
+
+## Phase Plan
+
+### Step 1 (Active Now): Lava Only
+- Environment: `MiniGrid-LavaRoom-v0`
+- RL exploration until 2 deaths
+- Rule extraction from fatal context
+- Store rule in memory
+- Truth confirmation episodes: 3
+
+### Step 2 (Paused)
+- Environment: `MiniGrid-QuicksandRoom-v0`
+- Same learning + confirmation process
+
+### Step 3 (Paused)
+- Environment: `MiniGrid-CombinedTesting-v0`
+- Final transfer test with learned rules
+
+## Why Stepwise
+
+- Easier debugging
+- Faster iteration
+- Cleaner logs per stage
+
+## Status
+
+- Step 1 enabled
+- Step 2 and Step 3 commented out (not deleted)
 # 🧭 Exp-1: Hybrid RL → LLM → Rule-Guided Explorer
 ### Semantic Safety Transfer via Vector-Embedded LLM Rules
 

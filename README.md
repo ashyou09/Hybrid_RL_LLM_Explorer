@@ -1,3 +1,36 @@
+# Stepwise Experiment (Temporary Mode)
+
+This project is now running in **stepwise mode** for debugging and iteration.
+
+## Current Active Flow
+
+1. Run **Lava learning** only (`MiniGrid-LavaRoom-v0`).
+2. Collect **2 deaths** in RL exploration.
+3. Generate and store rule from failure log.
+4. Run **Truth Confirmation 3 times** in Lava room.
+5. Stop.
+
+## Temporarily Paused (Kept in Code, Commented Out)
+
+- Sand learning phase (`MiniGrid-QuicksandRoom-v0`)
+- Combined final exam (`MiniGrid-CombinedTesting-v0`)
+
+## Run
+
+```bash
+python run_experiment.py
+```
+
+## Hugging Face
+
+`app.py` is also aligned to stepwise mode (Lava-only first).
+
+---
+
+When Lava-only flow is stable, we will re-enable:
+
+1. Sand learning
+2. Combined final exam
 ---
 title: Hybrid RL-LLM Explorer
 emoji: 🧠

@@ -107,17 +107,21 @@ def run_experiment_thread():
         LOG_Q.put("─"*48)
         LOG_Q.put("[Agent A] Entering MiniGrid-LavaRoom-v0")
         LOG_Q.put("─"*48)
-        hazard_1 = exp_mod.run_learning_phase("MiniGrid-LavaRoom-v0", agent_a, memory)
+        hazard_1 = exp_mod.run_learning_phase(
+            "MiniGrid-LavaRoom-v0",
+            agent_a,
+            memory,
+            truth_episodes=3,
+        )
+        LOG_Q.put(f"Stepwise mode complete: learned Lava rule = {hazard_1}.")
 
-        # ── Phase 2: Sand Room ──────────────────────────────
-        disp.set_phase("PHASE 2 — Sand Room (RL Exploration)")
-        hazard_2 = exp_mod.run_learning_phase("MiniGrid-QuicksandRoom-v0", agent_a, memory)
-
-        LOG_Q.put(f"Conclusion: must avoid {hazard_1} and {hazard_2}.")
-
-        # ── Phase 3: Final Exam ─────────────────────────────
-        disp.set_phase("PHASE 3 — Final Exam")
-        exp_mod.run_final_exam("MiniGrid-CombinedTesting-v0", memory)
+        # TEMPORARILY PAUSED FOR STEP-WISE DEVELOPMENT:
+        # disp.set_phase("PHASE 2 — Sand Room (RL Exploration)")
+        # hazard_2 = exp_mod.run_learning_phase("MiniGrid-QuicksandRoom-v0", agent_a, memory)
+        # LOG_Q.put(f"Conclusion: must avoid {hazard_1} and {hazard_2}.")
+        #
+        # disp.set_phase("PHASE 3 — Final Exam")
+        # exp_mod.run_final_exam("MiniGrid-CombinedTesting-v0", memory)
 
         LOG_Q.put("Experiment complete! ✓")
 
@@ -140,13 +144,9 @@ def run_dfs_thread():
         disp   = HeadlessDisplay()
         memory = MemoryHub()
 
-        rooms = [
-            "MiniGrid-LavaRoom-v0",
-            "MiniGrid-QuicksandRoom-v0",
-            "MiniGrid-CombinedTesting-v0",
-        ]
-        labels = ["Room 1 — Lava", "Room 2 — Sand", "Room 3 — Final Exam"]
-        timeouts = [40, 40, 120]
+        rooms = ["MiniGrid-LavaRoom-v0"]
+        labels = ["Room 1 — Lava (Stepwise)"]
+        timeouts = [60]
 
         for room, label, timeout in zip(rooms, labels, timeouts):
             disp.set_phase(f"DFS Explorer — {label}")

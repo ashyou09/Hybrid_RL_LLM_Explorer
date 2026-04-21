@@ -1,309 +1,370 @@
 """
-run_experiment.py — Main Orchestrator (Side-by-Side Display)
+run_experiment.py — Main Orchestrator
+======================================
+Three-phase experiment:
 
-=============================================================
-Single pygame window: game on the LEFT, coloured log on the RIGHT.
+  Phase 1  — RL agent explores the Lava Room (RANDOM lava tiles each episode).
+             Every step costs -3. Agent always moves to the neighbour tile
+             with the LOWEST accumulated penalty (greedy toward less pain).
+             Episode ends when:
+               (a) agent steps on red lava -> death logged
+               (b) agent reaches the green goal -> success logged
+               (c) a single tile accumulates -60 penalty -> auto-death logged
+             Runs until min_events terminal events are collected.
 
-  Phase 1 — RL Agent explores Lava Room, dies twice, LLM generates rule,
-            then Explorer proves the rule works in that room.
-  Phase 2 — Same for Quicksand Room.
-  Phase 3 — Explorer tackles the Combined Final Exam using
-            both rules from the Vector DB.
+  LLM Rule Synthesis — after Phase 1, learning_log.json is sent to the
+             LLM (Ollama llama3.2:3b) which generates plain-language rules.
+             These rules are stored in MemoryHub (ChromaDB).
 
-ChromaDB is wiped at both start AND end so every run is pristine.
+  Phase 3  — OnlineExplorerAgent plays the same Lava Room (again with NEW
+             random lava positions each episode). It queries MemoryHub before
+             every step: if 'red lava' is in front the rule fires and the
+             agent turns away instead of dying. Runs until it reaches the
+             goal or max_episodes.
 """
 
-import time
 import gymnasium as gym
-import src.env.environments as environments                          # registers custom rooms
-from src.core.rl_core           import DQNAgent, preprocess_obs, parse_local_observation
-from src.agents.reflection_engine import analyze_failure_log, verify_rule
-from src.core.memory_hub        import MemoryHub
+
+import src.env.environments as _env_reg          # registers custom env IDs
+from src.core.rl_core     import (
+    RLExplorer,
+    parse_local_observation,
+    log_death_event,
+    log_success_event,
+    clear_learning_log,
+    IDX_TO_OBJ, IDX_TO_COLOR,
+    AUTO_DEATH_THRESHOLD,
+)
+from src.agents.reflection_engine import synthesize_rules_from_log
 from src.agents.planner_agent     import OnlineExplorerAgent
-from src.ui.display           import UnifiedDisplay
-from dataclasses import dataclass
+from src.core.memory_hub          import MemoryHub
+from src.ui.display               import UnifiedDisplay
 
-display = None   # global — set in __main__
+# --- Fixed constants -------------------------------------------
+PHASE      = 1
+ENV_NAME   = "MiniGrid-LavaRoom-v0"
+STEP_DELAY = 0.15          # seconds between visual frames
 
-@dataclass(frozen=True)
-class ExperimentTiming:
-    step_delay_secs: float = 0.18          # visual speed per env step
-    learning_phase_secs: int = 3600        # basically infinite time
-    final_exam_secs: int = 3600            # basically infinite time
-    final_exam_max_episodes: int = 1       # only need one successful run now
-
-TIMING = ExperimentTiming()
+display: UnifiedDisplay | None = None
 
 
-def _require_display():
-    if display is None:
-        raise RuntimeError("Display is not initialized.")
+# ---------------------------------------------------------------
+#  Helpers
+# ---------------------------------------------------------------
+
+def _tile_description_from_pos(env, pos: tuple) -> str:
+    """Return a human-readable label for the tile at *pos*."""
+    cell = env.unwrapped.grid.get(*pos)
+    if cell is None:
+        return "empty space"
+    obj = IDX_TO_OBJ.get(getattr(cell, "type", None), getattr(cell, "type", "unknown"))
+    col = IDX_TO_COLOR.get(getattr(cell, "color", None), getattr(cell, "color", "unknown"))
+    if obj == "lava" and col == "yellow":
+        return "sand"
+    if obj == "goal":
+        return "green goal box"
+    if obj == "lava":
+        return f"{col} lava"
+    return f"{col} {obj}"
 
 
-# ──────────────────────────────────────────────────────────
-#  Phase 1 & 2: RL exploration → LLM rule → Explorer validation
-#  Each phase always runs for LEARNING_PHASE_SECS wall-clock seconds.
-# ──────────────────────────────────────────────────────────
+def _tile_desc_from_obs(obs_image) -> str:
+    """Read the tile directly in front from the egocentric observation."""
+    front_text = parse_local_observation(obs_image).split(".")[0]
+    return front_text.replace("Front: ", "").strip()
 
-def run_learning_phase(env_name, agent, memory):
-    _require_display()
-    label = env_name.split("-")[1]
-    display.set_phase(f"RL Exploration — {label}")
 
-    print(f"\n{'─'*50}")
-    print(f"[Agent A] Entering {env_name}  ({TIMING.learning_phase_secs}s)")
-    print(f"{'─'*50}")
+# ---------------------------------------------------------------
+#  Phase 1: RL Exploration Loop
+# ---------------------------------------------------------------
 
-    deadline = time.time() + TIMING.learning_phase_secs
-    deaths = 0
-    rule_data = None
-    trigger   = None
+def run_phase1(agent: RLExplorer, memory: MemoryHub,
+               min_events: int = 3,
+               max_episodes: int = 30,
+               auto_inc_lava: bool = False) -> list[dict]:
+    """Run RL exploration episodes in the Lava Room.
+    Lava tiles are placed RANDOMLY on each episode.
+    Runs until min_events terminal events are logged.
+    Returns the list of rules generated by the LLM after learning.
+    """
+    display.set_phase("PHASE 1 — RL Exploration (Lava Room, random lava)")
 
-    # ── SUB-PHASE A: RL exploration until 2 deaths ──────────
-    env = gym.make(env_name, render_mode="rgb_array")
-    episode = 0
+    print(f"\n{'='*55}")
+    print(f"  PHASE 1 — Lava Room  [RANDOM lava positions each episode]")
+    print(f"  Runs until {min_events} terminal events (deaths / auto-kills)")
+    print(f"  Max episodes: {max_episodes}")
+    print(f"{'='*55}\n")
 
-    while deaths < 2 and time.time() < deadline:
+    event_count = 0
+    episode     = 0
+
+    while event_count < min_events and episode < max_episodes:
         episode += 1
-        obs = env.reset()[0]
-        
-        from collections import defaultdict
-        revisit_counts = defaultdict(int)
-        
-        last_pos = None
+        prev_events = event_count
+        agent.reset_episode()
+        env = gym.make(ENV_NAME, render_mode="rgb_array")
+        obs, _ = env.reset()   # _gen_grid called here -> new random lava layout
+
         grid_size = env.unwrapped.grid.width
-        display.render_frame(env.render(), overlay_visits=revisit_counts, grid_size=grid_size)
+        display.render_frame(
+            env.render(),
+            overlay_visits=agent.tracker.tile_penalty,
+            grid_size=grid_size,
+        )
+        print(f"  [Episode {episode}] Starting (events so far: {event_count}) | new random lava layout")
 
-        for step in range(100):
-            if time.time() >= deadline:
-                break
-            state  = preprocess_obs(obs)
-            
-            # 🧠 LLM Knowledge Injection (Action Masking)
-            mask = [1.0, 1.0, 1.0]
-            local_text = parse_local_observation(obs["image"])
-            front_block = local_text.split(".")[0].replace("Front: ", "")
-            
-            if memory:
-                # Lowered threshold to 0.60 to be more aggressive with safety rules
-                rule = memory.query_local_context(front_block, threshold=0.60, silent=True)
-                if rule and rule.get("forbidden_action") == "Move Forward":
-                    print(f"\n  [🧠 LLM KNOWLEDGE] !!! DANGER: {front_block} !!! — applying HEAVY PENALTY.")
-                    mask = [1.0, 1.0, 0.0]  # Mask 'Move Forward'
+        episode_done = False
+        step         = 0
 
-            action = agent.select_action(state, apply_mask=mask)
-            display.wait(TIMING.step_delay_secs)
+        while not episode_done:
+            display.wait(STEP_DELAY)
 
-            pos = tuple(env.unwrapped.agent_pos)
-            if pos != last_pos: # Only append penalty if we successfully moved!
-                if pos in revisit_counts:
-                    revisit_counts[pos] += 1
-                    count = revisit_counts[pos]
-                    print(f"  [⚠ Revisit] {pos} x{count} | penalty=-3.0")
-                    if count > 100:
-                        print(f"  [🛑 GAME OVER] hallucinate")
-                        break
-                else:
-                    revisit_counts[pos] = 1
-            last_pos = pos
-
-            next_obs, reward, terminated, truncated, _ = env.step(action)
-            display.render_frame(env.render(), overlay_visits=revisit_counts, grid_size=grid_size)
-
-            if reward <= -10:
-                deaths += 1
-                print(f"  [💀] Death #{deaths} at step {step}")
-
-                if deaths >= 2:
-                    print(f"  [Agent A] {deaths} deaths collected. Sending to LLM…")
-                    agent.trigger_failure_log(env_name, obs["image"], action)
-
-                    display.set_phase(f"LLM Reflection — {label}")
-                    from src.agents.reflection_engine import analyze_failure_log, verify_rule
-                    rule_data = analyze_failure_log()
-
-                    if rule_data and verify_rule(rule_data):
-                        memory.store_verified_rule(rule_data)
-
-                    if rule_data:
-                        print(f"  [Agent A] Rule learned: {rule_data['rule']}")
-                        trigger = rule_data["trigger_feature"]
-                    break
-                else:
-                    print("  [Agent A] Respawning to confirm…")
-                    break
-
-            obs = next_obs
-            if terminated or truncated:
-                break
-
-    env.close()
-
-    # ── SUB-PHASE B: Truth Confirmation (loop until deadline) ──
-    if rule_data and time.time() < deadline:
-        print(f"\n  ╔══════════════════════════════════════════════╗")
-        print(f"  ║  TRUTH CONFIRMATION: Re-entering same room    ║")
-        print(f"  ║  Verifying the LLM rule prevents real deaths  ║")
-        print(f"  ╚══════════════════════════════════════════════╝")
-
-        display.set_phase(f"Truth Confirmation — {label}")
-        ep = 0
-
-        while time.time() < deadline and ep < 1:
-            ep += 1
-            env = gym.make(env_name, render_mode="rgb_array")
-            obs = env.reset()[0]
-            grid_size = env.unwrapped.grid.width
-            explorer = OnlineExplorerAgent(memory, env_name=env_name)
-            display.render_frame(env.render(), overlay_visits=explorer.revisit_counts, grid_size=grid_size)
-            print(f"  [Truth] Episode {ep} starting…")
-
-            while time.time() < deadline:
-                display.wait(TIMING.step_delay_secs)
-                action = explorer.act(env, obs)
-                obs, reward, terminated, truncated, _ = env.step(action)
-                display.render_frame(env.render(), overlay_visits=explorer.revisit_counts, grid_size=grid_size)
-
-                if explorer.force_stop:
-                    print("  [🛑] Revisit penalty limit reached — ending episode.")
-                    break
-
-                if reward >= 10:
-                    print(f"\n  [\033[92m✓ TRUTH CONFIRMED\033[0m] Rule works — no deaths!")
-                    break
-                if reward <= -10:
-                    print(f"\n  [\033[91m✗ TRUTH REFUTED\033[0m] Rule failed — agent died!")
-                    break
-                if terminated or truncated:
-                    break
-
-            explorer.episode_summary()
-            env.close()
-
-    # If we haven't learned a rule yet but ran out of time, just
-    # keep exploring to fill the remaining seconds visually
-    elif not rule_data and time.time() < deadline:
-        env = gym.make(env_name, render_mode="rgb_array")
-        obs = env.reset()[0]
-        display.render_frame(env.render())
-        print("  [Agent A] Continuing exploration…")
-        while time.time() < deadline:
-            state  = preprocess_obs(obs)
-            action = agent.select_action(state)
-            display.wait(TIMING.step_delay_secs)
-            obs, reward, terminated, truncated, _ = env.step(action)
-            display.render_frame(env.render())
-            if terminated or truncated:
-                obs = env.reset()[0]
-                display.render_frame(env.render())
-        env.close()
-
-    elapsed = TIMING.learning_phase_secs - max(0, deadline - time.time())
-    print(f"  [{label}] Phase complete ({elapsed:.0f}s elapsed)")
-    return trigger
-
-
-
-# ──────────────────────────────────────────────────────────
-#  Phase 3: Final Exam
-# ──────────────────────────────────────────────────────────
-
-def run_final_exam(env_name, memory):
-    """Run Phase 3 for up to TIMING.final_exam_secs wall-clock seconds.
-    
-    Research Feature: Multi-death episodic analysis.
-    If explorer dies 3+ times, collect all death paths and send to LLM
-    for strategic pattern analysis."""
-    _require_display()
-    display.set_phase("PHASE 3 — FINAL EXAM")
-
-    print(f"\n{'═'*50}")
-    print(f"  PHASE 3 — FINAL EXAM: {env_name}")
-    print(f"  Running for up to {TIMING.final_exam_secs} seconds (max {TIMING.final_exam_max_episodes} episodes)…")
-    print(f"{'═'*50}")
-
-    deadline = time.time() + TIMING.final_exam_secs
-    episode  = 0
-
-    # User requested to keep running until it wins, so we drop the max episode limit
-    while True:
-        episode += 1
-        env      = gym.make(env_name, render_mode="rgb_array")
-        explorer = OnlineExplorerAgent(memory, env_name=env_name)
-        obs      = env.reset()[0]
-        grid_size = env.unwrapped.grid.width
-        display.render_frame(env.render(), overlay_visits=explorer.revisit_counts, grid_size=grid_size)
-        print(f"\n  [Phase 3] Episode {episode} starting…")
-
-        step = 0
-        while True:
-            display.wait(TIMING.step_delay_secs)
-            action = explorer.act(env, obs)
-            obs, reward, terminated, truncated, _ = env.step(action)
-            display.render_frame(env.render(), overlay_visits=explorer.revisit_counts, grid_size=grid_size)
+            action = agent.select_action(env)
+            obs, env_reward, terminated, truncated, _ = env.step(action)
+            pos = tuple(int(c) for c in env.unwrapped.agent_pos)
             step += 1
 
+            step_cost, auto_kill = agent.step_done(pos)
+            total_pen   = agent.tracker.total_penalty
+            total_steps = agent.tracker.total_steps
+
+            tile_desc = _tile_desc_from_obs(obs["image"])
+            pen_here  = agent.tracker.penalty_at(pos)
+            print(
+                f"\r  step {step:3d} | pos={pos} | front={tile_desc!r:20s} "
+                f"| tile_pen={pen_here:+.0f}  total={total_pen:+.0f}",
+                end="", flush=True,
+            )
+
+            display.render_frame(
+                env.render(),
+                overlay_visits=agent.tracker.tile_penalty,
+                grid_size=grid_size,
+            )
+
+            # Auto-death (60-penalty rule)
+            if auto_kill:
+                print(f"\n  [AUTO-DEATH] Tile {pos} hit -{AUTO_DEATH_THRESHOLD} cumulative penalty -> force killed.")
+                auto_tile_type = _tile_description_from_pos(env, pos)
+                log_death_event(
+                    phase=PHASE, env_name=ENV_NAME,
+                    tile_description=auto_tile_type, auto_death=True,
+                    total_steps=total_steps, total_penalty=total_pen,
+                    auto_death_tile_type=auto_tile_type,
+                )
+                event_count += 1
+                episode_done = True
+
+            # Tile death (lava)
+            elif env_reward <= -10 or (terminated and env_reward < 0):
+                killer_tile = _tile_description_from_pos(env, pos)
+                print(f"\n  [DEATH] Stepped into {killer_tile!r} at step {step}.")
+                log_death_event(
+                    phase=PHASE, env_name=ENV_NAME,
+                    tile_description=killer_tile, auto_death=False,
+                    total_steps=total_steps, total_penalty=total_pen,
+                )
+                event_count += 1
+                episode_done = True
+
+            # Success (green goal)
+            elif env_reward >= 10 or (terminated and env_reward > 0):
+                print(f"\n  [SUCCESS] Reached the green goal in {step} steps!")
+                log_success_event(
+                    phase=PHASE, env_name=ENV_NAME,
+                    total_steps=total_steps, total_penalty=total_pen,
+                )
+                episode_done = True
+
+            # Episode timeout
+            elif terminated or truncated:
+                print(f"\n  [TIMEOUT] Episode {episode} timed out at step {step}.")
+                episode_done = True
+
+        env.close()
+        print(f"  [Episode {episode}] Done. Events: {event_count}/{min_events}\n")
+        
+        if event_count > prev_events and auto_inc_lava:
+            _env_reg.LavaRoomEnv.LAVA_COUNT += 1
+            print(f"  [Auto-Increase] Lava count increased to {_env_reg.LavaRoomEnv.LAVA_COUNT} for next episode.")
+            
+        if event_count >= min_events:
+            break
+
+    print(f"\n{'-'*55}")
+    print(f"  Phase 1 complete. {event_count} event(s) over {episode} episode(s).")
+    print(f"{'-'*55}\n")
+
+    # LLM Rule Synthesis
+    display.set_phase("LLM Rule Synthesis — reading learning log...")
+    print("\n[LLM] Sending learning log to LLM for rule synthesis...\n")
+
+    rules = synthesize_rules_from_log()
+
+    if rules:
+        display.set_phase("Rules Ready — Storing in Memory")
+        for rule_data in rules:
+            memory.store_verified_rule(rule_data)
+        print(f"\n[Memory] {len(rules)} rule(s) stored in MemoryHub for Phase 3.")
+        print("\n  Rules the agent will follow in Phase 3:")
+        for i, r in enumerate(rules, 1):
+            print(f"    {i}. [{r['trigger_feature']}]  {r['rule']}")
+    else:
+        print("[Memory] No rules to store.")
+
+    return rules
+
+
+# ---------------------------------------------------------------
+#  Phase 3: Smart Explorer using LLM Rules
+# ---------------------------------------------------------------
+
+def run_phase3(memory: MemoryHub, max_episodes: int = 10):
+    """OnlineExplorerAgent plays Lava Room guided by the learned rules.
+
+    Each episode gets a NEW random lava layout so the agent cannot rely
+    on position memory. It must use the MemoryHub rule to navigate safely.
+    """
+    display.set_phase("PHASE 3 — Smart Explorer (LLM Rules Active)")
+
+    print(f"\n{'='*55}")
+    print(f"  PHASE 3 — Smart Explorer  [LLM rules active]")
+    print(f"  Lava positions are NEW each episode (random)")
+    print(f"  Agent avoids red lava using the learned rule")
+    print(f"  Max episodes: {max_episodes}")
+    print(f"{'='*55}\n")
+
+    episode = 0
+    wins    = 0
+    while episode < max_episodes:
+        episode += 1
+        explorer = OnlineExplorerAgent(memory, env_name=ENV_NAME)
+        env      = gym.make(ENV_NAME, render_mode="rgb_array")
+        obs, _   = env.reset()   # new random lava layout
+        grid_size = env.unwrapped.grid.width
+
+        display.render_frame(
+            env.render(),
+            overlay_visits=explorer.revisit_counts,
+            grid_size=grid_size,
+        )
+        print(f"\n  [Phase 3 Episode {episode}] Starting | fresh random lava layout")
+
+        step         = 0
+        episode_done = False
+
+        while not episode_done:
+            display.wait(STEP_DELAY)
+
+            action = explorer.act(env, obs)
+            obs, reward, terminated, truncated, _ = env.step(action)
+            step += 1
+
+            display.render_frame(
+                env.render(),
+                overlay_visits=explorer.revisit_counts,
+                grid_size=grid_size,
+            )
+
             if explorer.force_stop:
-                print("  [🛑] Revisit penalty limit reached — ending episode.")
-                break
+                print(f"  [STOP] Revisit limit reached — ending episode {episode}.")
+                episode_done = True
 
-            if reward <= -10:
-                # Agent died — record the death for multi-death analysis
-                failure_pos = tuple(env.unwrapped.agent_pos)
-                explorer.record_death(failure_pos)
-                print(f"  [💀] Episode {episode}: FAILED — stepped into hazard at {failure_pos} after {step} steps.")
-                
-                # Check if we've accumulated 3 deaths for meta-analysis
-                if explorer.episode_deaths >= 3:
-                    print("\n  [📊] Three deaths recorded! Requesting LLM meta-analysis…")
-                    explorer.analyze_multiple_deaths()
-                
-                break
+            elif reward <= -10 or (terminated and reward < 0):
+                pos = tuple(int(c) for c in env.unwrapped.agent_pos)
+                cell_desc = _tile_description_from_pos(env, pos)
+                print(
+                    f"\n  [Phase 3 DEATH] Stepped into {cell_desc!r} at step {step}.\n"
+                    f"     (Rule may have missed this — lava was at a new position)"
+                )
+                episode_done = True
 
-            if reward >= 10:
-                print(f"  [\033[92m✓ FLAWLESS SUCCESS\033[0m] Episode {episode} goal reached in {step} steps!")
-                explorer.episode_summary()
-                env.close()
-                print(f"\n  [Phase 3] Game WON! Showcase complete.")
-                return
+            elif reward >= 10 or (terminated and reward > 0):
+                print(
+                    f"\n  +------------------------------------------+"
+                    f"\n  |  PHASE 3 SUCCESS!  Goal reached!          |"
+                    f"\n  |  Episode {episode:2d}  *  {step:3d} steps                  |"
+                    f"\n  +------------------------------------------+"
+                )
+                wins += 1
+                episode_done = True
 
-            if terminated or truncated:
-                break
+            elif terminated or truncated:
+                print(f"  [TIMEOUT] Episode {episode} timed out at step {step}.")
+                episode_done = True
 
         explorer.episode_summary()
         env.close()
 
+    if wins < max_episodes:
+        print(
+            f"\n  [Phase 3] Finished {episode} episode(s), won {wins} times.\n"
+            f"  Rules helped avoid lava but more learning may be needed."
+        )
+    else:
+        print(f"\n  [Phase 3] Flawless victory! Won all {max_episodes} run(s).")
 
-# ──────────────────────────────────────────────────────────
+
+    print(f"\n{'-'*55}")
+    print(f"  Phase 3 complete.")
+    print(f"{'-'*55}\n")
+
+
+# ---------------------------------------------------------------
 #  Entry point
-# ──────────────────────────────────────────────────────────
+# ---------------------------------------------------------------
 
 if __name__ == "__main__":
     display = UnifiedDisplay()
 
+    # Show config screen — researcher picks run counts before starting
+    cfg             = display.show_config_screen()
+    min_deaths      = cfg["min_deaths"]
+    p1_lava         = cfg["p1_lava"]
+    auto_inc_lava   = cfg["auto_inc_lava"]
+    max_p3_episodes = cfg["max_p3_episodes"]
+    p3_lava         = cfg["p3_lava"]
+
     print("\n" + "=" * 55)
-    print("  Exp-1: Hybrid RL > LLM > Semantic Rule Transfer")
+    print("  Exp-1: Hybrid RL -> LLM -> Phase 3 Smart Explorer")
+    print(f"  Phase 1: collect {min_deaths} death event(s)")
+    print(f"  Phase 3: exactly {max_p3_episodes} episode(s)")
     print("=" * 55)
 
-    memory  = MemoryHub()
-    agent_a = DQNAgent()
+    # Fresh start: wipe learning log from previous runs
+    clear_learning_log()
 
-    display.set_phase("PHASE 1 — Lava Room")
-    hazard_1 = run_learning_phase("MiniGrid-LavaRoom-v0", agent_a, memory)
+    memory = MemoryHub()
+    agent  = RLExplorer()
 
-    display.set_phase("PHASE 2 — Quicksand Room")
-    hazard_2 = run_learning_phase("MiniGrid-QuicksandRoom-v0", agent_a, memory)
+    # Apply Phase 1 Lava configuration
+    _env_reg.LavaRoomEnv.LAVA_COUNT = p1_lava
 
-    print(f"\n{'─'*55}")
-    print(f"  Conclusion: must avoid {hazard_1} and {hazard_2}.")
-    print(f"  Now the Explorer will tackle the combined maze.")
-    print(f"{'─'*55}")
+    # Phase 1: RL exploration & rule learning
+    rules = run_phase1(agent, memory,
+                       min_events=min_deaths,
+                       max_episodes=min_deaths * 10,
+                       auto_inc_lava=auto_inc_lava)
 
-    run_final_exam("MiniGrid-CombinedTesting-v0", memory)
+    # Print earned rules
+    print("\n" + "=" * 55)
+    print("  Rules Generated for Phase 3:")
+    print("=" * 55)
+    if rules:
+        for i, r in enumerate(rules, 1):
+            print(f"  {i}. [{r['trigger_feature']}]  {r['rule']}")
+    else:
+        print("  (No rules — Phase 3 will navigate blind.)")
+    print("=" * 55 + "\n")
 
-    display.set_phase("Done")
-    display.wait(TIMING.step_delay_secs)
+    # Apply Phase 3 Lava configuration
+    _env_reg.LavaRoomEnv.LAVA_COUNT = p3_lava
 
-    print("[Done] Next run will start fresh automatically.\n")
+    # Phase 3: Smart explorer with LLM rules
+    run_phase3(memory, max_episodes=max_p3_episodes)
 
+    # Done
+    display.set_phase("Experiment Complete")
+    display.wait(STEP_DELAY)
+    print("[Done] Experiment complete.\n")
     display.cleanup()

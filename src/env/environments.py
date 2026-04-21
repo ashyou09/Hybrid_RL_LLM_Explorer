@@ -38,7 +38,11 @@ class Quicksand(WorldObj):
 # ---------- Room 1: Lava Room ----------
 
 class LavaRoomEnv(MiniGridEnv):
-    """7×7 room with a horizontal red‑lava barrier and one gap."""
+    """7×7 room where red-lava tiles are placed at RANDOM positions each
+    episode reset.  This forces the agent to rely on the tile-type rule
+    ('avoid red lava') rather than memorised grid coordinates."""
+
+    LAVA_COUNT = 2   # Decreased to 2 as requested by research user
 
     def __init__(self, size=7, **kwargs):
         mission_space = MissionSpace(mission_func=lambda: "Avoid red lava.")
@@ -48,14 +52,25 @@ class LavaRoomEnv(MiniGridEnv):
     def _gen_grid(self, width, height):
         self.grid = Grid(width, height)
         self.grid.wall_rect(0, 0, width, height)
-        self.put_obj(Goal(), width - 2, height - 2)
-        self.agent_pos = (1, 1)
+
+        start = (1, 1)
+        goal  = (width - 2, height - 2)
+        self.put_obj(Goal(), *goal)
+        self.agent_pos = start
         self.agent_dir = 0
-        # Horizontal lava barrier with one gap
-        for i in range(1, width - 1):
-            if i % 4 != 0:
-                self.grid.set(i, 3, Lava())
-                self.grid.set(3, i, Lava())
+
+        # Build a pool of interior tiles that are not start or goal
+        interior = [
+            (x, y)
+            for x in range(1, width - 1)
+            for y in range(1, height - 1)
+            if (x, y) != start and (x, y) != goal
+        ]
+        random.shuffle(interior)
+
+        # Place up to LAVA_COUNT lava tiles
+        for x, y in interior[: self.LAVA_COUNT]:
+            self.grid.set(x, y, Lava())
 
     def step(self, action):
         obs, reward, terminated, truncated, info = super().step(action)
@@ -126,16 +141,11 @@ class CombinedTestingEnv(MiniGridEnv):
         self.grid.set(3, k, Lava())
         self.grid.set(4, l, Lava())
 
-        
-
         # Quicksand cluster
-        
         self.grid.set(k, 5, Quicksand())
         self.grid.set(6, k, Quicksand())
         self.grid.set(l, 4, Quicksand())
         self.grid.set(7, 4, Quicksand())
-
-        
 
     def step(self, action):
         obs, reward, terminated, truncated, info = super().step(action)
