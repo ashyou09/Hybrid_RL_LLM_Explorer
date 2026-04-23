@@ -2,7 +2,7 @@
 title: Hybrid RL-LLM Explorer
 emoji: 🧠
 colorFrom: red
-colorTo: orange
+colorTo: yellow
 sdk: streamlit
 sdk_version: "1.32.0"
 app_file: app.py
