@@ -5,6 +5,7 @@ __pycache__/
 chroma_db/
 .chroma_db/
 failure_log.json
+learning_log.json
 .DS_Store
 *.egg-info/
 dist/
