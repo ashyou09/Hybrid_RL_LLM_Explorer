@@ -13,26 +13,19 @@ publishable research project. It merges:
 
 | File | What it contains |
 |---|---|
-| [00_research_vision.md](00_research_vision.md) | The research question, the claim, how the doc's RQs map onto experiments |
+| [future.md](future.md) | **The main plan:** 6 levels from very small to large; Level 1 in full detail |
+| [tracker.md](tracker.md) | Status of every level and step, plus handover notes |
+| [00_research_vision.md](00_research_vision.md) | The overall research story, hypotheses, mapping of the doc's RQs |
 | [01_current_state_review.md](01_current_state_review.md) | Honest review of today's code and doc: what holds, what a reviewer will attack |
-| [02_roadmap.md](02_roadmap.md) | Milestones M0–M7, each broken into small steps with a "done when" check |
-| [03_exp1_design.md](03_exp1_design.md) | Exp-1 in detail: worlds, tiles, agents, conditions, metrics, statistics |
-| [04_open_questions.md](04_open_questions.md) | Decisions still needed from the team, plus a decision log |
+| [04_open_questions.md](04_open_questions.md) | Decisions still needed, plus a decision log |
 
-## Status board
+Write-ups for each level live in [`../conclusion/`](../conclusion/): a paper-format
+version and a plain-language version.
 
-| Milestone | Title | Status |
-|---|---|---|
-| M0 | Foundations (seeds, headless runs, tests) | ⬜ not started |
-| M1 | Text-layer environment with hidden danger categories | ⬜ not started |
-| M2 | Real RL body (tabular Q-learning + action-mask hook) | ⬜ not started |
-| M3 | LLM brain: rule schema, provider adapter, shields | ⬜ not started |
-| M4 | Truth Filter: verification loop + Verified/Rumor/Myth | ⬜ not started |
-| M5 | Exp-1 evaluation harness and results | ⬜ not started |
-| M6 | Exp-2: multi-agent Osmosis (2 → N agents, trust score) | ⬜ not started |
-| M7 | Paper writing | ⬜ not started |
+## Workflow
 
-Legend: ⬜ not started · 🟨 in progress · ✅ done
+For every step: **discuss → build → push → review**. No step is built before we
+have talked through its design.
 
 ## Ground rules
 

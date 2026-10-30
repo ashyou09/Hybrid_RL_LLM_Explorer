@@ -44,11 +44,11 @@ Why this question:
 |---|---|
 | RQ1 When to verify? | Exp-1 trigger conditions E1–E5 (none / always / on-failure / periodic K=5, K=10) |
 | RQ2 Minimal effective verification | Shield comparison: lookup vs. embedding vs. LLM-judge vs. oracle |
-| RQ3 Structured claim representation | Rule schema (IF/THEN + scope + confidence + evidence ids), M3 |
+| RQ3 Structured claim representation | Rule schema (IF/THEN + scope + confidence + evidence ids), Level 1 |
 | RQ4 Error attribution | Each rule links to the evidence events that produced it; failures trace back to a rule id |
-| RQ5 System-level reliability | Exp-1 main results table (M5) |
+| RQ5 System-level reliability | Exp-1 main results table (Level 1) |
 | RQ6 Can SLMs approximate verification? | Model-size comparison (H7) |
-| RQ7 Verification vs. collaboration diversity | Deferred to Exp-2 (M6) |
+| RQ7 Verification vs. collaboration diversity | Deferred to Exp-2 (Level 5) |
 | RQ8 Which errors are hardest to verify? | Partially: delayed-effect hazards as a stretch goal |
 
 ## Scope: what is in and out of the first paper

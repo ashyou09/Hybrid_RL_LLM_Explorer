@@ -13,15 +13,15 @@
 | 2026-10-30 | Danger design: hidden categories, held-out tiles, decoys. |
 | 2026-10-30 | LLM providers: Groq (free), OpenRouter (free), Claude API. |
 | 2026-10-30 | Keep the old demo; build research code separately. |
+| 2026-10-30 | Work in 6 levels, smallest first; Level 1 in full detail, later levels expanded at handover. |
+| 2026-10-30 | Each level is written up in `conclusion/level_N/` as paper.md + explained.md. |
+| 2026-10-30 | E1–E5 will be re-run in the new code (Level 4). |
+| 2026-10-30 | Workflow: discuss each step before building it. |
 
 ## Open questions
 
-1. **E1–E5 results.** The research doc marks E1–E5 "Completed", but no code or
-   results for them are in this repo. Where are they? Re-run inside the new harness?
-2. **First paper scope.** Exp-1 only (learner → novice), with multi-agent trust
-   (Exp-2) as future work — or must the first paper include multiple agents?
-3. **Team split.** Who owns which milestone? (Doc colour code lists Sanchit.)
-4. **Target venue.** Which workshop? This sets page limit and deadline.
-5. **Verification definition.** How many probe episodes, what threshold? (Proposal in roadmap 4.1.)
-6. **Delayed-effect hazards** (poison that kills a few steps later) — stretch goal
+1. **Team split.** Who owns which milestone? (Doc colour code lists Sanchit.)
+2. **Target venue.** Which workshop? This sets page limit and deadline.
+3. **Verification definition.** How many probe episodes, what threshold? (Level 3.)
+4. **Delayed-effect hazards** (poison that kills a few steps later) — stretch goal
    for doc RQ8, or out of scope?
