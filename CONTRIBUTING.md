@@ -2,19 +2,22 @@
 
 ## The loop for every step
 
-1. **Discuss** — open an issue with the *Level step* template; agree on the design.
-2. **Build** — on a branch, in small commits.
-3. **Push** — open a pull request using the PR template.
-4. **Review** — check the "done when" condition from `future_plan/future.md`.
+1. **Discuss** — agree on the step's design (in chat, or an issue with the *Level step* template if a teammate should see it).
+2. **Build** — small commits.
+3. **Check** — the step's "done when" condition from `future_plan/future.md` passes, and `pytest` passes.
+4. **Push** — straight to `main`. No pull request is needed: the repo owner pushes directly.
 5. **Track** — update `future_plan/tracker.md` (status + commit).
 
 A level is finished only when its write-ups in `conclusion/level_N/` are done and the
 handover checklist in `future.md` is ticked.
 
-## Branches
+## Before every push
 
-- `main` — stable; it syncs automatically to the Hugging Face Space.
-- Work branches — one per step, e.g. `level1/step-1-foundations`.
+- [ ] Tests pass (`pytest`)
+- [ ] `future_plan/tracker.md` updated
+- [ ] No API keys or secrets in the commit
+
+Note: pushing to `main` also updates the Hugging Face Space automatically.
 
 ## Commits
 
