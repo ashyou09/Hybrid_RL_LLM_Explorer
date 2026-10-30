@@ -177,12 +177,11 @@ false-avoidance, steps to goal, LLM calls.
 
 ### 1.10 Tools and where to run
 
-- **LLM (decided 2026-10-30):** **Claude Haiku 5.5** (`claude-haiku-5-5`), the cheapest
-  Claude model, at low effort. It is reachable from the cloud session without network
-  changes, and a full Level 1 run costs well under one cent (answers are cached).
-  - **Also supported:** Claude Haiku 4.5 (`--model claude-haiku-4-5`); open-weight Llama
-    models via Groq or OpenRouter (`--provider groq|openrouter`) or offline via Ollama.
-    These matter for Level 4's model comparison.
+- **LLM (decided 2026-10-30):** **Groq, Llama 3.3 70B** (`llama-3.3-70b-versatile`) —
+  free and open-source, so anyone can reproduce the results. The Hugging Face Space and
+  laptops/Colab can reach Groq; the Claude cloud session cannot (network policy).
+  - **Also supported:** Claude Haiku 5.5 / 4.5 (`--provider claude`, needs API credits),
+    OpenRouter, Ollama offline. These matter for Level 4's model comparison.
 - **Machine:** nothing heavy runs locally. Tabular Q-learning needs no GPU, and the
   LLM runs on the API. Develop and run in a cloud session or Google Colab; host the
   Lab panel on the existing Hugging Face Space. The laptop only needs a browser.

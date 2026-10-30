@@ -40,9 +40,10 @@ Legend: ⬜ not started · 💬 discussing · 🟨 building · ✅ done
 **Level 1 to Level 2 (partial handover, 2026-10-30).** Everything is built and tested.
 Measured: learner 90.7% success in training worlds; on never-seen hot tiles, no shield
 and exact lookup both give 41.1% deaths; oracle 0% deaths, 92.6% success.
-**Still open:** run S3/S4 (LLM) with Claude Haiku 5.5. This needs `ANTHROPIC_API_KEY` in
-the environment settings and a **new session** (settings only reach new sessions); no
-network change is needed. S2 (embedding) also needs `sentence-transformers` and access to
+**Still open:** run S3/S4 (LLM) with Groq (Llama 3.3 70B). Groq is reachable from the
+Hugging Face Space (add `GROQ_API_KEY` as a Space secret, run *Compare shields* with
+6000/10/100 and download the JSON) or from a laptop/Colab (`python -m research evaluate`).
+The Claude cloud session cannot reach Groq. S2 (embedding) also needs `sentence-transformers` and access to
 huggingface.co (blocked in the cloud session; run it on a laptop or Colab). Then fill the [PENDING] parts of `conclusion/level_1/`. Level 2 is expanded in
 `future.md` and starts after those runs.
 

@@ -23,7 +23,8 @@
 | 2026-10-30 | ~~LLM: open-weight Llama via Groq as main~~ (superseded below: the cloud session cannot reach Groq). |
 | 2026-10-30 | Run in the cloud (cloud session / Colab / HF Space); laptop needs only a browser. |
 
-| 2026-10-30 | Level 1 LLM runs use Claude Haiku 5.5 (`claude-haiku-5-5`), the cheapest Claude model, effort low. Haiku 4.5 and Groq/OpenRouter remain supported via --model / --provider. |
+| 2026-10-30 | ~~Level 1 LLM runs use Claude Haiku 5.5~~ (superseded: the API needs credits, which a Claude Pro subscription does not include). |
+| 2026-10-30 | **Level 1 LLM runs use Groq, Llama 3.3 70B** (free, open-source), run from the Hugging Face Space or a laptop/Colab. Claude stays supported. |
 
 ## Open questions
 

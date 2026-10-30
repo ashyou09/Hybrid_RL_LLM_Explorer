@@ -16,9 +16,9 @@ them from environment variables.
 
 | Variable | Provider | Needed from |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | **Claude Haiku 5.5** (cheapest Claude model) — **main**, used for the Level 1 runs | Level 1 |
-| `GROQ_API_KEY` | Groq (free tier, open Llama models) — optional | Level 4 comparison |
+| `GROQ_API_KEY` | **Groq** (free; open-source Llama 3.3 70B) — **main**, used for the Level 1 runs | Level 1 |
 | `OPENROUTER_API_KEY` | OpenRouter (free models) — optional | Level 4 comparison |
+| `ANTHROPIC_API_KEY` | Claude Haiku 5.5 — optional; needs **API credits** (a Claude Pro subscription does not include them) | Level 4 comparison |
 
 ### Claude cloud session
 
@@ -85,12 +85,17 @@ repo's **Settings → Secrets and variables → Actions**.
 
 ### LLM shields on the Space
 
-To let visitors run the LLM shields on the Space, add the Claude key as a **Space secret**:
-Space **Settings → Variables and secrets → New secret**, name `ANTHROPIC_API_KEY`.
-Without it, the Lab still works and skips the LLM shields with a clear message.
+Add the Groq key as a **Space secret**: Space **Settings → Variables and secrets →
+New secret**, name `GROQ_API_KEY` (free key from console.groq.com). Without it, the Lab
+still works and skips the LLM shields with a clear message. The Space can reach Groq
+even though the Claude cloud session cannot.
 
-⚠️ A public Space lets anyone spend your key. Set a low monthly **spend limit** in the
-Anthropic console first. With Claude Haiku 5.5 each judgement costs a tiny fraction of a cent.
+To use Claude instead, add `ANTHROPIC_API_KEY` and pick Provider = claude. That needs
+API credits in the Anthropic console (a Claude Pro subscription does not include them),
+and a low monthly spend limit, because a public Space lets anyone use the key.
+
+**Getting results from the Space:** in the Lab's *Compare shields* tab, set 6000 training
+episodes, 10 seeds and 100 episodes per seed, run, and use **Download results (JSON)**.
 
 Research results (images, GIFs) are not deployed, because the Space rejects binary files
 that are not in Git LFS. The v0 Gradio demo (`app.py`) is no longer deployed; it runs locally.

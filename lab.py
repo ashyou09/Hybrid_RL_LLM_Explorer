@@ -50,7 +50,7 @@ def knobs() -> tuple[Config, str, str | None]:
     eval_seeds = sb.slider("Seeds", 1, 10, 3)
     eval_episodes = sb.select_slider("Episodes per seed", [20, 50, 100], value=50)
     sb.caption("Brain (LLM)")
-    provider = sb.selectbox("Provider", list(PROVIDERS), index=list(PROVIDERS).index("claude"))
+    provider = sb.selectbox("Provider", list(PROVIDERS), index=list(PROVIDERS).index("groq"))
     model = sb.text_input("Model (blank = default)", "") or None
     threshold = sb.slider("Embedding strictness", 0.3, 0.95, 0.65, 0.05)
     cfg = Config(name="lab", grid_size=grid_size, hazard_count=hazard_count,
@@ -117,7 +117,7 @@ a painting of a fire). Can the rules protect it without making it afraid of the 
 (no help on new tiles) · oracle 0% deaths, 93% success. LLM results: pending.
 
 **How to use:** set the knobs on the left → tab 1 *Train* → tab 2 *Watch* an episode →
-tab 3 *Compare* shields → tab 4 *Sweep* a knob. LLM shields need an API key; the
+tab 3 *Compare* shields → tab 4 *Sweep* a knob. LLM shields use **Groq** (free; needs `GROQ_API_KEY`); the
 *fake* provider is a keyword matcher for testing only.
 """)
 
@@ -179,8 +179,11 @@ with tab_compare:
         st.info("Train Agent A first (tab 1).")
     else:
         agent, history = trained(st.session_state["train_key"])
-        picked = st.multiselect("Shields", SHIELDS, default=["none", "lookup", "oracle"],
+        picked = st.multiselect("Shields", SHIELDS,
+                                default=["none", "lookup", "llm_prior", "llm_rules", "oracle"],
                                 format_func=LABELS.get)
+        st.caption("For results comparable to the write-ups use: 6000 training episodes, "
+                   "10 seeds, 100 episodes per seed (slower).")
         if st.button("Compare", type="primary"):
             with st.spinner("Evaluating on the same test worlds…"):
                 _, rules, shields, skipped, _ = ex.build(cfg, history, picked, provider, model)
@@ -193,6 +196,11 @@ with tab_compare:
                 st.image(buf.getvalue())
                 if rules:
                     st.code(rules_mod.to_text(rules), language=None)
+                report = {"config": cfg.to_dict(), "llm": f"{provider}:{model or 'default'}",
+                          "rules": rules, "skipped": skipped, "results": res}
+                st.download_button("⬇️ Download results (JSON)",
+                                   json.dumps(report, indent=2, default=str),
+                                   file_name="lab_compare_results.json", mime="application/json")
 
 with tab_sweep:
     if needs_training:

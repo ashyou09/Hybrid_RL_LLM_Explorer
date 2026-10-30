@@ -133,7 +133,7 @@ Novice agent in rooms with **never-seen** hot tiles (10 seeds × 100 episodes, 9
 | None | 57.4% | 41.1% |
 | Exact lookup of past killers | 57.4% | 41.1% |
 | Oracle (perfect judgement) | 92.6% | 0.0% |
-| LLM shields (Claude Haiku 5.5) | *pending: run once the API key is set* | |
+| LLM shields (Groq, Llama 3.3 70B) | *pending: run on the Space once the Groq key is set* | |
 
 Remembering exact failures gives **no** protection on new hazards; a shield with good
 judgement is worth ~35 points of success. Details: [results/level_1/tables](results/level_1/tables/).
@@ -160,8 +160,8 @@ judgement is worth ~35 points of success. Details: [results/level_1/tables](resu
 |---|---|---|
 | Environment | Gymnasium + MiniGrid + text layer | Research standard; tiles get natural-language descriptions |
 | RL | Tabular Q-learning | Honest RL, no GPU needed |
-| LLM | Claude Haiku 5.5 (cheapest Claude model) | Reachable from the cloud session; a full Level 1 run costs well under one cent |
-| Other LLMs | Groq / OpenRouter (open Llama models), Ollama offline | Supported for the Level 4 model comparison |
+| LLM | Groq, Llama 3.3 70B | Free and open-source: anyone can reproduce the results |
+| Other LLMs | Claude Haiku (needs API credits), OpenRouter, Ollama offline | Supported for the Level 4 model comparison |
 | Offline / backup | Ollama · OpenRouter | Run locally / alternative free models |
 | Reference model | Claude (sparingly) | Model-size comparison in Level 4 |
 | Visuals | GIF replays + Streamlit Lab | See what happens, change knobs |

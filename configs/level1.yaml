@@ -26,6 +26,6 @@ eval_episodes: 100
 # rules / shields (from step L1.7)
 experience_budget: 5
 shield: none
-llm_provider: claude
-llm_model: claude-haiku-5-5   # cheapest Claude model
+llm_provider: groq   # free; open-source Llama models
+llm_model: ""        # blank = llama-3.3-70b-versatile
 embed_threshold: 0.65
