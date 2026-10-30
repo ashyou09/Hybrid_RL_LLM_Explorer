@@ -31,7 +31,7 @@ PROVIDERS = {
     # name: (default model, env var with the key)
     "groq": ("llama-3.3-70b-versatile", "GROQ_API_KEY"),
     "openrouter": ("meta-llama/llama-3.3-70b-instruct:free", "OPENROUTER_API_KEY"),
-    "claude": ("claude-opus-5-5", "ANTHROPIC_API_KEY"),
+    "claude": ("claude-haiku-5-5", "ANTHROPIC_API_KEY"),   # cheapest Claude model
     "ollama": ("llama3.2:3b", None),
     "fake": ("keyword-v1", None),
 }
@@ -153,6 +153,7 @@ class LLM:
         try:
             response = client.messages.create(
                 model=self.model, max_tokens=16000,
+                output_config={"effort": "low"},   # short yes/no judgements: keep cost minimal
                 **({"system": system} if system else {}),
                 messages=[{"role": "user", "content": prompt}],
             )

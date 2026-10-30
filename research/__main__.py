@@ -91,7 +91,12 @@ def _prepare(args):
     run_dir = Path(args.run) if args.run else ex.latest_run()
     cfg, agent, history = ex.load_run(run_dir, args.overrides)
     names = [n.strip() for n in args.shields.split(",") if n.strip()]
-    provider = args.provider or cfg.llm_provider
+    # The LLM is chosen now (configs/level1.yaml or --provider/--model), not by the
+    # settings stored when the learner was trained.
+    current = Config.load("configs/level1.yaml")
+    provider = args.provider or current.llm_provider
+    if not args.model and provider == current.llm_provider:
+        args.model = current.llm_model or None
     return ex, run_dir, cfg, agent, history, names, provider
 
 

@@ -26,6 +26,6 @@ eval_episodes: 100
 # rules / shields (from step L1.7)
 experience_budget: 5
 shield: none
-llm_provider: groq
-llm_model: ""
+llm_provider: claude
+llm_model: claude-haiku-5-5
 embed_threshold: 0.65

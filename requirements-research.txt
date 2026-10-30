@@ -11,6 +11,8 @@ pytest>=8.0
 streamlit>=1.40
 pandas>=2.0
 
+# LLM provider used for the Level 1 runs (Claude Haiku 5.5)
+anthropic>=2.0
+
 # Optional extras:
-#   pip install anthropic               -> Claude provider
 #   pip install sentence-transformers   -> embedding shield S2 (CPU PyTorch, large)

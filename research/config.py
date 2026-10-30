@@ -43,8 +43,8 @@ class Config:
     # ── rule / shield knobs (used from step L1.7 on) ──────────
     experience_budget: int = 5         # learner deaths given to the LLM
     shield: str = "none"
-    llm_provider: str = "groq"
-    llm_model: str = ""
+    llm_provider: str = "claude"
+    llm_model: str = "claude-haiku-5-5"
     embed_threshold: float = 0.65
 
     # ------------------------------------------------------------------
