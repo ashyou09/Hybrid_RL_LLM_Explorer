@@ -19,3 +19,6 @@ build/
 
 # research runs (regenerate from meta.json)
 results/*/runs/
+
+# fake-LLM answers are pipeline tests, not results
+results/llm_cache/fake__*

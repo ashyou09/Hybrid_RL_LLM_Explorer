@@ -49,9 +49,12 @@ def train(cfg: Config, rng: np.random.Generator) -> tuple[QLearner, list[dict]]:
 def evaluate(agent: QLearner, cfg: Config, split: str, mask_fn=None) -> dict:
     """Greedy evaluation over ``eval_seeds`` × ``eval_episodes`` fresh layouts.
 
-    ``mask_fn(view) -> mask`` lets a shield forbid actions (None = no shield).
+    ``mask_fn(view) -> mask`` or ``-> (mask, note)`` lets a shield forbid actions
+    (None = no shield). The agent's tie-breaking RNG is reset first, so every shield
+    is evaluated on the same layouts with the same random draws (a paired comparison).
     """
     env = TextGridEnv(cfg, split=split)
+    agent.rng = np.random.default_rng(EVAL_SEED_BASE + cfg.seed)
     per_seed, deaths_by_tile, unseen_states = [], Counter(), 0
     for s_idx in range(cfg.eval_seeds):
         outcomes = Counter()
@@ -63,6 +66,8 @@ def evaluate(agent: QLearner, cfg: Config, split: str, mask_fn=None) -> dict:
                 state = state_of(view, prev)
                 unseen_states += not agent.knows(state)
                 mask = mask_fn(view) if mask_fn else None
+                if isinstance(mask, tuple):
+                    mask = mask[0]
                 prev = agent.act(state, cfg.epsilon_eval, mask)
                 _, _, term, trunc, info = env.step(prev)
                 if term or trunc:

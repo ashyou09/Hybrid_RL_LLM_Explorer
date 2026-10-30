@@ -124,7 +124,10 @@ class EmbeddingShield(Shield):
         except ImportError as e:
             raise RuntimeError("The embedding shield needs: pip install sentence-transformers") from e
         self.threshold = threshold
-        self.model = SentenceTransformer(model_name)
+        try:
+            self.model = SentenceTransformer(model_name)
+        except Exception as e:   # model download needs access to huggingface.co
+            raise RuntimeError(f"Could not load embedding model {model_name}: {e}") from e
         self.killers = sorted({e["tile"] for e in log if e["event"] == "died_on"})
         self.killer_vecs = self.model.encode(self.killers, normalize_embeddings=True) \
             if self.killers else None

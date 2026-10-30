@@ -75,6 +75,91 @@ def cmd_replay(args: argparse.Namespace) -> None:
     print(f"Saved {save_gif(frames, Path(args.out))}: {summary}")
 
 
+def _add_run_args(p: argparse.ArgumentParser) -> None:
+    from research.shields import SHIELDS
+    p.add_argument("--run", help="training run folder (default: latest in results/level_1/runs)")
+    p.add_argument("--shields", default=",".join(SHIELDS),
+                   help=f"comma-separated, from: {','.join(SHIELDS)}")
+    p.add_argument("--provider", help="LLM provider: groq, openrouter, claude, ollama, fake")
+    p.add_argument("--model", help="LLM model (default: the provider's default)")
+    p.add_argument("--set", dest="overrides", action="append", default=[],
+                   metavar="KEY=VALUE", help="override one knob of the run's config")
+
+
+def _prepare(args):
+    from research import experiments as ex
+    run_dir = Path(args.run) if args.run else ex.latest_run()
+    cfg, agent, history = ex.load_run(run_dir, args.overrides)
+    names = [n.strip() for n in args.shields.split(",") if n.strip()]
+    provider = args.provider or cfg.llm_provider
+    return ex, run_dir, cfg, agent, history, names, provider
+
+
+def _report_skipped(skipped: dict) -> None:
+    for name, why in skipped.items():
+        print(f"  skipped {name}: {why}")
+
+
+def _write(out, name: str, data: dict, table: str | None = None) -> None:
+    (out / f"{name}.json").write_text(json.dumps(data, indent=2, default=str))
+    if table:
+        (out / f"{name}.md").write_text(table + "\n")
+
+
+def cmd_classify(args: argparse.Namespace) -> None:
+    """L1.10: every shield judges every tile (no RL) -> precision / recall table."""
+    ex, run_dir, cfg, _, history, names, provider = _prepare(args)
+    log, rules, shields, skipped, llm = ex.build(cfg, history, names, provider, args.model)
+    result = ex.classify(shields, cfg.deadly_categories)
+    out = ex.out_dir(run_dir, "classify")
+    table = ex.classify_table(result)
+    _write(out, "classify", {"llm": llm.label, "rules": rules, "skipped": skipped,
+                             "result": result}, table)
+    print(f"Rules ({llm.label}):\n{__import__('research.rules', fromlist=['x']).to_text(rules)}\n")
+    print(table)
+    _report_skipped(skipped)
+    print(f"\nSaved to {out}  (LLM: {llm.api_calls} API calls, {llm.cache_hits} cached)")
+
+
+def cmd_evaluate(args: argparse.Namespace) -> None:
+    """L1.11: the novice plays test worlds with each shield."""
+    ex, run_dir, cfg, agent, history, names, provider = _prepare(args)
+    log, rules, shields, skipped, llm = ex.build(cfg, history, names, provider, args.model)
+    result = ex.evaluate_shields(agent, cfg, shields)
+    out = ex.out_dir(run_dir, "evaluate")
+    table = ex.evaluate_table(result)
+    _write(out, "evaluate", {"llm": llm.label, "rules": rules, "skipped": skipped,
+                             "llm_api_calls": llm.api_calls, "result": result}, table)
+    if result:
+        ex.plot_evaluation(result, out / "evaluate.png")
+        from research.env import TextGridEnv
+        from research.qlearning import AgentPolicy
+        from research.replay import record_episode, save_gif
+        for name, shield in shields.items():
+            frames, _ = record_episode(TextGridEnv(cfg, split="test"),
+                                       AgentPolicy(agent, mask_fn=shield.mask), seed=1)
+            save_gif(frames, out / f"replay_{name}.gif")
+    print(table)
+    _report_skipped(skipped)
+    print(f"\nSaved to {out}  (LLM: {llm.api_calls} API calls, {llm.cache_hits} cached)")
+
+
+def cmd_sweep(args: argparse.Namespace) -> None:
+    """L1.12: change one knob over a range; evaluate every shield at each value."""
+    import yaml
+    ex, run_dir, cfg, agent, history, names, provider = _prepare(args)
+    values = [yaml.safe_load(v) for v in args.values.split(",")]
+    result = ex.sweep(agent, cfg, history, args.knob, values, names, provider, args.model)
+    out = ex.out_dir(run_dir, f"sweep_{args.knob}")
+    _write(out, "sweep", result)
+    ex.plot_sweep(result, out / f"sweep_{args.knob}.png")
+    for p in result["points"]:
+        print(f"{args.knob}={p['value']}: " + "  ".join(
+            f"{n} death {r['death']:.0%}" for n, r in p["results"].items()))
+    _report_skipped(result["skipped"])
+    print(f"\nSaved to {out}")
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="python -m research",
                                      description="Semantic Osmosis research experiments.")
@@ -95,6 +180,20 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--out", default="replay.gif")
     p.set_defaults(func=cmd_replay)
+
+    p = sub.add_parser("classify", help="L1.10: each shield judges every tile (no RL)")
+    _add_run_args(p)
+    p.set_defaults(func=cmd_classify)
+
+    p = sub.add_parser("evaluate", help="L1.11: the novice plays test worlds with each shield")
+    _add_run_args(p)
+    p.set_defaults(func=cmd_evaluate)
+
+    p = sub.add_parser("sweep", help="L1.12: change one knob over a range of values")
+    _add_run_args(p)
+    p.add_argument("--knob", required=True, help="e.g. hazard_count, experience_budget, embed_threshold")
+    p.add_argument("--values", required=True, help="comma-separated, e.g. 1,2,4,6")
+    p.set_defaults(func=cmd_sweep)
 
     args = parser.parse_args(argv)
     args.func(args)
