@@ -12,6 +12,7 @@ dist/
 build/
 .env
 .env.*
+!.env.example
 .pytest_cache/
 .ipynb_checkpoints/
 *.log
