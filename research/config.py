@@ -44,7 +44,7 @@ class Config:
     experience_budget: int = 5         # learner deaths given to the LLM
     shield: str = "none"
     llm_provider: str = "claude"
-    llm_model: str = "claude-haiku-4-5"
+    llm_model: str = "claude-haiku-5-5"
     embed_threshold: float = 0.65
 
     # ------------------------------------------------------------------

@@ -44,7 +44,7 @@ def test_extract_json_tolerates_fences_and_preamble():
 
 
 def test_claude_request_shape(tmp_path, monkeypatch):
-    """Haiku 4.5 gets no effort setting; newer models get effort=low."""
+    """Default Haiku 5.5 gets effort=low; Haiku 4.5 (which rejects it) gets none."""
     anthropic = pytest.importorskip("anthropic")
     sent = {}
 
@@ -66,7 +66,7 @@ def test_claude_request_shape(tmp_path, monkeypatch):
     monkeypatch.setattr(anthropic, "Anthropic", lambda: Client())
     monkeypatch.setenv("ANTHROPIC_API_KEY", "test")
     LLM("claude", cache_dir=tmp_path).complete("hi", system="sys")
-    assert sent["model"] == "claude-haiku-4-5" and "output_config" not in sent
+    assert sent["model"] == "claude-haiku-5-5" and sent["output_config"] == {"effort": "low"}
     assert "temperature" not in sent and sent["system"] == "sys"
-    LLM("claude", model="claude-haiku-5-5", cache_dir=tmp_path).complete("hi2")
-    assert sent["output_config"] == {"effort": "low"}
+    LLM("claude", model="claude-haiku-4-5", cache_dir=tmp_path).complete("hi2")
+    assert "output_config" not in sent

@@ -27,5 +27,5 @@ eval_episodes: 100
 experience_budget: 5
 shield: none
 llm_provider: claude
-llm_model: claude-haiku-4-5
+llm_model: claude-haiku-5-5   # cheapest Claude model
 embed_threshold: 0.65
