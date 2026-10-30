@@ -35,5 +35,5 @@ have talked through its design.
    reduction" or "60–90% survival improvement" stay labelled *H#* until measured.
 3. **The old demo (`app.py`, `run_experiment.py`, HF Space) keeps working.** New
    research code lives in a separate headless package (`research/`).
-4. **Small steps.** Each step in the roadmap should take roughly half a day to
+4. **Small steps.** Each step in a level should take roughly half a day to
    two days and end in a commit.

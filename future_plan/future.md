@@ -118,32 +118,86 @@ front tile is judged dangerous. Plays *test* worlds with unseen hot tiles and de
 Protocol: 10 seeds × 100 test episodes per shield, separate training and test seeds,
 95% bootstrap confidence intervals.
 
-### 1.8 Steps (each one: discuss → build → push → review)
+### 1.8 The Lab — see it happen, turn the knobs
+
+The experiment should feel like a real lab: you can **watch** what the agents do and
+**change one thing at a time** to see what it causes.
+
+**Knobs (independent variables)** — all live in one config file, so every run is
+fully described by its config:
+
+| Knob | Example values | What it changes |
+|---|---|---|
+| `grid_size` | 5, 7, 9 | room size |
+| `hazard_count` | 1 … 8 | how many deadly tiles per episode (difficulty) |
+| `decoy_count` | 0 … 6 | how many harmless look-alikes |
+| `experience_budget` | 1, 3, 5, 10 deaths | how much the learner experienced before the LLM writes rules |
+| `train_episodes` | 200 … 5 000 | how long Agent A trains |
+| `shield` | S0 … S6 | which decision method the novice uses |
+| `llm_model` | small / large open model, Claude | which brain |
+| `embed_threshold` | 0.5 … 0.9 | how strict embedding matching is |
+| `seeds`, `episodes` | 10, 100 | statistical power |
+
+**Measurements (dependent variables):** success rate, unseen-hazard deaths, decoy
+false-avoidance, steps to goal, LLM calls.
+
+**What you can see:**
+
+1. **Episode replay** — the grid drawn frame by frame (saved as GIF), with tile names,
+   and every shield decision shown: *"molten rock → BLOCKED (rule R2: hot things kill)"*.
+2. **Lab panel** (Streamlit, runs locally or on the Hugging Face Space) — sliders for
+   the knobs, a "Run" button, the replay, and live result charts.
+3. **Sweeps** — turn one knob across a range, keep everything else fixed, plot the effect.
+   Planned Level 1 sweeps:
+   - *Difficulty sweep:* death rate vs. `hazard_count`, one line per shield.
+   - *Strictness sweep:* `embed_threshold` vs. hazards caught and decoys wrongly
+     blocked — shows there is no threshold where embeddings beat the LLM (or that
+     there is, which would be a finding).
+   - *Experience sweep:* how many deaths does the learner need before the rules work?
+
+### 1.9 Steps (each one: discuss → build → push → review)
 
 | Step | What | Done when |
 |---|---|---|
-| L1.1 | Create `research/` package, `seed_everything`, `pytest`, research requirements | `pytest` passes; same seed gives identical runs |
+| L1.1 | Create `research/` package, `seed_everything`, `pytest`, research requirements, config file with all knobs | `pytest` passes; same seed + config gives identical runs |
 | L1.2 | Tile catalog for Level 1 (table in 1.4) | catalog loads; train/test/decoy split tested |
 | L1.3 | Text-layer MiniGrid env + layout generator + local perception | deadly tile ends episode; 1 000 layouts all solvable; no coordinates in obs |
-| L1.4 | Agent A: tabular Q-learning + action-mask hook + training curve | > 90% success in a no-hazard world; curve saved |
-| L1.5 | Experience log (structured, no coordinates) | schema test passes |
-| L1.6 | LLM adapter (Groq / OpenRouter / Claude / fake) + disk cache | fake provider tests pass; second run makes 0 API calls |
-| L1.7 | Reflection prompt: log → structured rules | rules parse and validate |
-| L1.8 | Shields S0–S4, S6 behind one interface | each passes a small labelled test |
-| L1.9 | **First result:** tile-classification benchmark (no RL) | precision/recall table for every shield |
-| L1.10 | Novice evaluation with seeds and confidence intervals | results table + plots in `results/level_1/` |
-| L1.11 | Write `conclusion/level_1/paper.md` and `explained.md` | both written, every number linked to a command |
-| L1.12 | Handover: expand Level 2 in this file to full detail | tracker updated, Level 2 detailed |
+| L1.4 | Episode replay: draw the grid with tile names, save GIF | a random-agent episode is saved as a GIF you can watch |
+| L1.5 | Agent A: tabular Q-learning + action-mask hook + training curve | > 90% success in a no-hazard world; curve saved |
+| L1.6 | Experience log (structured, no coordinates) | schema test passes |
+| L1.7 | LLM adapter (Groq / OpenRouter / Ollama / Claude / fake) + disk cache | fake provider tests pass; second run makes 0 API calls |
+| L1.8 | Reflection prompt: log → structured rules | rules parse and validate |
+| L1.9 | Shields S0–S4, S6 behind one interface; decisions shown in the replay | each passes a small labelled test |
+| L1.10 | **First result:** tile-classification benchmark (no RL) | precision/recall table for every shield |
+| L1.11 | Novice evaluation with seeds and confidence intervals | results table + plots in `results/level_1/` |
+| L1.12 | Sweeps (difficulty, strictness, experience) | three plots in `results/level_1/` |
+| L1.13 | Lab panel (Streamlit): knobs, run, replay, charts | panel runs locally and on the HF Space |
+| L1.14 | Write `conclusion/level_1/paper.md` and `explained.md` | both written, every number linked to a command |
+| L1.15 | Handover: expand Level 2 in this file to full detail | tracker updated, Level 2 detailed |
 
-### 1.9 Level 1 deliverables
+### 1.10 Tools and where to run
+
+- **LLM:** open-weight models first, so anyone can reproduce the results.
+  - **Main:** Llama-family open models through **Groq's free tier** (fast; free key).
+    The same models can run offline with **Ollama** for people who prefer local.
+  - **Backup:** OpenRouter free models.
+  - **Reference "big brain":** Claude, used sparingly (cached answers cost cents) — mainly in Level 4's model comparison.
+- **Machine:** nothing heavy runs locally. Tabular Q-learning needs no GPU, and the
+  LLM runs on the API. Develop and run in a cloud session or Google Colab; host the
+  Lab panel on the existing Hugging Face Space. The laptop only needs a browser.
+  The embedding shield (S2) needs CPU PyTorch, which is the largest install — it is
+  kept as an optional extra.
+
+### 1.11 Level 1 deliverables
 
 - `research/` code with tests
-- `results/level_1/` (configs, metrics JSON, plots, LLM cache)
+- `results/level_1/` (configs, metrics JSON, plots, replay GIFs, LLM cache)
+- the Lab panel (Streamlit), runnable locally and on the HF Space
 - `conclusion/level_1/paper.md` — paper format
 - `conclusion/level_1/explained.md` — plain-language explanation
 - `tracker.md` updated with the handover note
 
-### 1.10 Handover checklist (Level 1 → Level 2)
+### 1.12 Handover checklist (Level 1 → Level 2)
 
 - [ ] All L1 steps ticked in the tracker
 - [ ] Hypotheses L1-H1…H4 each marked supported / not supported, with numbers

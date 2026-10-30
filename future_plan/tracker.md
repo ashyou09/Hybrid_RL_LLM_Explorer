@@ -17,18 +17,21 @@ Legend: ⬜ not started · 💬 discussing · 🟨 building · ✅ done
 
 | Step | What | Status | Commit / notes |
 |---|---|---|---|
-| L1.1 | `research/` package, seeds, tests | ⬜ | |
+| L1.1 | `research/` package, seeds, tests, knob config | 💬 | |
 | L1.2 | Tile catalog | ⬜ | |
 | L1.3 | Text-layer env + layouts + local perception | ⬜ | |
-| L1.4 | Agent A: tabular Q-learning | ⬜ | |
-| L1.5 | Experience log | ⬜ | |
-| L1.6 | LLM adapter + cache | ⬜ | |
-| L1.7 | Reflection → rules | ⬜ | |
-| L1.8 | Shields | ⬜ | |
-| L1.9 | Tile-classification benchmark (first result) | ⬜ | |
-| L1.10 | Novice evaluation | ⬜ | |
-| L1.11 | Write conclusion (paper + explained) | ⬜ | |
-| L1.12 | Handover to Level 2 | ⬜ | |
+| L1.4 | Episode replay (GIF) | ⬜ | |
+| L1.5 | Agent A: tabular Q-learning | ⬜ | |
+| L1.6 | Experience log | ⬜ | |
+| L1.7 | LLM adapter + cache | ⬜ | |
+| L1.8 | Reflection → rules | ⬜ | |
+| L1.9 | Shields (+ decisions in replay) | ⬜ | |
+| L1.10 | Tile-classification benchmark (first result) | ⬜ | |
+| L1.11 | Novice evaluation | ⬜ | |
+| L1.12 | Sweeps: difficulty, strictness, experience | ⬜ | |
+| L1.13 | Lab panel (Streamlit) | ⬜ | |
+| L1.14 | Write conclusion (paper + explained) | ⬜ | |
+| L1.15 | Handover to Level 2 | ⬜ | |
 
 ## Handover notes
 

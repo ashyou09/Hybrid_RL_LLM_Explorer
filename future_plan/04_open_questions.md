@@ -17,6 +17,11 @@
 | 2026-10-30 | Each level is written up in `conclusion/level_N/` as paper.md + explained.md. |
 | 2026-10-30 | E1–E5 will be re-run in the new code (Level 4). |
 | 2026-10-30 | Workflow: discuss each step before building it. |
+| 2026-10-30 | Level 1 tile set (heat category) accepted. |
+| 2026-10-30 | Add a visual Lab: knob config, episode replays, sweeps, Streamlit panel. |
+| 2026-10-30 | Build order: foundations first (L1.1 → L1.15). |
+| 2026-10-30 | LLM: open-weight Llama models via Groq free tier (Ollama for offline); OpenRouter backup; Claude as reference. |
+| 2026-10-30 | Run in the cloud (cloud session / Colab / HF Space); laptop needs only a browser. |
 
 ## Open questions
 
