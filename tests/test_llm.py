@@ -89,3 +89,37 @@ def test_http_requests_send_a_real_user_agent(tmp_path, monkeypatch):
     assert LLM("groq", cache_dir=tmp_path).complete("hi") == "ok"
     assert seen["ua"] and "urllib" not in seen["ua"].lower()
     assert seen["auth"] == "Bearer test-key"
+
+
+def test_pick_model_prefers_known_then_largest_llama():
+    from research.llm import pick_model
+    assert pick_model("groq", ["whisper-large-v3", "openai/gpt-oss-120b", "llama-3.1-8b-instant"]) \
+        == "openai/gpt-oss-120b"
+    assert pick_model("groq", ["whisper-large-v3", "mixtral-8x7b", "llama-9.9-90b-new", "llama-9.9-8b"]) \
+        == "llama-9.9-90b-new"
+    assert pick_model("groq", ["whisper-large-v3", "llama-guard-4-12b"]) is None
+
+
+def test_retired_default_model_is_replaced_automatically(tmp_path, monkeypatch):
+    import io
+    import urllib.request
+
+    used = {}
+
+    def fake_urlopen(req, timeout=None):
+        if req.data is None:     # GET /models
+            body = {"data": [{"id": "whisper-large-v3"}, {"id": "openai/gpt-oss-120b"}]}
+        else:
+            used["model"] = json.loads(req.data)["model"]
+            body = {"choices": [{"message": {"content": "ok"}}]}
+        return io.BytesIO(json.dumps(body).encode())
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setenv("GROQ_API_KEY", "k")
+    llm = LLM("groq", cache_dir=tmp_path)
+    assert llm.complete("hi") == "ok"
+    assert used["model"] == "openai/gpt-oss-120b" and llm.label == "groq:openai/gpt-oss-120b"
+    assert llm.cache_path.name == "groq__openai_gpt-oss-120b.json"
+    explicit = LLM("groq", model="my-model", cache_dir=tmp_path)
+    explicit.complete("hi")
+    assert used["model"] == "my-model"           # an explicit model is never replaced

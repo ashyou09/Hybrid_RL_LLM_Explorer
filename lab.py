@@ -165,8 +165,10 @@ with tab_watch:
                              "test (never-seen tiles)" if s == "test" else "training")
         seed = c3.number_input("Layout seed", 0, 10_000, 1)
         if st.button("▶ Play episode", type="primary"):
-            _, _, shields, skipped, _ = ex.build(cfg, history, [shield_name], provider, model)
+            _, _, shields, skipped, llm = ex.build(cfg, history, [shield_name], provider, model)
             show_skipped(skipped)
+            if shield_name in ("llm_prior", "llm_rules") and shields:
+                st.caption(f"LLM used: `{llm.label}`")
             if shields:
                 frames, summary = record_episode(
                     TextGridEnv(cfg, split=split),
@@ -186,9 +188,11 @@ with tab_compare:
                    "10 seeds, 100 episodes per seed (slower).")
         if st.button("Compare", type="primary"):
             with st.spinner("Evaluating on the same test worlds…"):
-                _, rules, shields, skipped, _ = ex.build(cfg, history, picked, provider, model)
+                _, rules, shields, skipped, llm = ex.build(cfg, history, picked, provider, model)
                 show_skipped(skipped)
                 res = ex.evaluate_shields(agent, cfg, shields)
+            if any(n in shields for n in ("llm_prior", "llm_rules")):
+                st.caption(f"LLM used: `{llm.label}`")
             if res:
                 st.markdown(ex.evaluate_table(res))
                 buf = io.BytesIO()
@@ -196,7 +200,7 @@ with tab_compare:
                 st.image(buf.getvalue())
                 if rules:
                     st.code(rules_mod.to_text(rules), language=None)
-                report = {"config": cfg.to_dict(), "llm": f"{provider}:{model or 'default'}",
+                report = {"config": cfg.to_dict(), "llm": llm.label,
                           "rules": rules, "skipped": skipped, "results": res}
                 st.download_button("⬇️ Download results (JSON)",
                                    json.dumps(report, indent=2, default=str),

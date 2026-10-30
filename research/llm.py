@@ -41,6 +41,41 @@ OPENAI_COMPATIBLE_URLS = {
     "openrouter": "https://openrouter.ai/api/v1/chat/completions",
 }
 OLLAMA_URL = "http://localhost:11434/api/chat"
+MODELS_URLS = {
+    "groq": "https://api.groq.com/openai/v1/models",
+    "openrouter": "https://openrouter.ai/api/v1/models",
+}
+
+# Providers rename and retire models. When the default is not in the provider's live
+# model list, the first available name below is used; failing that, the largest open
+# chat model in the list (Llama family first). The model actually used is always
+# recorded in llm.label and in the cache file name.
+PREFERRED_MODELS = {
+    "groq": ["llama-3.3-70b-versatile", "meta-llama/llama-4-maverick-17b-128e-instruct",
+             "meta-llama/llama-4-scout-17b-16e-instruct", "openai/gpt-oss-120b",
+             "qwen/qwen3-32b", "llama-3.1-8b-instant"],
+    "openrouter": ["meta-llama/llama-3.3-70b-instruct:free",
+                   "meta-llama/llama-4-maverick:free", "meta-llama/llama-4-scout:free"],
+}
+_NOT_CHAT = ("whisper", "tts", "guard", "embed", "playai", "compound", "orpheus", "distil")
+
+
+def pick_model(provider: str, available: list[str]) -> str | None:
+    """Choose a chat model from a provider's live model list."""
+    for name in PREFERRED_MODELS.get(provider, []):
+        if name in available:
+            return name
+    chat = [m for m in available if not any(w in m.lower() for w in _NOT_CHAT)]
+    if provider == "openrouter":
+        chat = [m for m in chat if m.endswith(":free")] or chat
+    if not chat:
+        return None
+
+    def size(m: str) -> int:
+        nums = [int(n) for n in re.findall(r"(\d+)b", m.lower())]
+        return max(nums) if nums else 0
+
+    return sorted(chat, key=lambda m: ("llama" not in m.lower(), -size(m), m))[0]
 
 # Some APIs sit behind Cloudflare, which rejects Python's default "Python-urllib"
 # client name with HTTP 403 "error code: 1010"; send an explicit one instead.
@@ -84,12 +119,18 @@ class LLM:
             raise ValueError(f"Unknown provider {provider!r}; choose from {sorted(PROVIDERS)}")
         load_dotenv()
         self.provider = provider
-        self.model = model or PROVIDERS[provider][0]
         self.timeout = timeout
+        self.cache_dir = Path(cache_dir)
         self.api_calls = 0       # real requests sent
         self.cache_hits = 0
-        safe = re.sub(r"[^A-Za-z0-9_.-]+", "_", self.model)
-        self.cache_path = Path(cache_dir) / f"{provider}__{safe}.json"
+        # with no explicit model, check the provider's live list before the first call
+        self._auto_model = model is None and provider in MODELS_URLS
+        self._set_model(model or PROVIDERS[provider][0])
+
+    def _set_model(self, model: str) -> None:
+        self.model = model
+        safe = re.sub(r"[^A-Za-z0-9_.-]+", "_", model)
+        self.cache_path = self.cache_dir / f"{self.provider}__{safe}.json"
         self._cache = json.loads(self.cache_path.read_text()) if self.cache_path.exists() else {}
 
     @property
@@ -111,6 +152,12 @@ class LLM:
         ok, why = self.available()
         if not ok:
             raise LLMUnavailable(f"{self.label}: {why}")
+        if self._auto_model:
+            self._auto_model = False
+            self.resolve_model()
+            if key in self._cache:                   # the switched model may have it cached
+                self.cache_hits += 1
+                return self._cache[key]["response"]
         text = getattr(self, f"_call_{self.provider}")(prompt, system)
         self.api_calls += 1
         self._cache[key] = {"system": system, "prompt": prompt, "response": text}
@@ -118,9 +165,33 @@ class LLM:
         self.cache_path.write_text(json.dumps(self._cache, indent=1, sort_keys=True))
         return text
 
+    def available_models(self) -> list[str]:
+        """The provider's live model list (OpenAI-compatible providers only)."""
+        if self.provider not in MODELS_URLS:
+            return []
+        env = PROVIDERS[self.provider][1]
+        data = self._request(MODELS_URLS[self.provider], None,
+                             {"Authorization": f"Bearer {os.environ.get(env, '')}"})
+        return sorted(m["id"] for m in data.get("data", []))
+
+    def resolve_model(self) -> str:
+        """Switch to an available model if the current one is not offered."""
+        try:
+            models = self.available_models()
+        except LLMUnavailable:
+            return self.model          # cannot list: keep the default and let the call report
+        if models and self.model not in models:
+            choice = pick_model(self.provider, models)
+            if choice:
+                self._set_model(choice)
+        return self.model
+
     # ── providers ──────────────────────────────────────────────
     def _post(self, url: str, body: dict, headers: dict) -> dict:
-        req = urllib.request.Request(url, data=json.dumps(body).encode(),
+        return self._request(url, body, headers)
+
+    def _request(self, url: str, body: dict | None, headers: dict) -> dict:
+        req = urllib.request.Request(url, data=None if body is None else json.dumps(body).encode(),
                                      headers={"Content-Type": "application/json",
                                               "Accept": "application/json",
                                               "User-Agent": USER_AGENT, **headers})
