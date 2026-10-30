@@ -42,6 +42,10 @@ OPENAI_COMPATIBLE_URLS = {
 }
 OLLAMA_URL = "http://localhost:11434/api/chat"
 
+# Some APIs sit behind Cloudflare, which rejects Python's default "Python-urllib"
+# client name with HTTP 403 "error code: 1010"; send an explicit one instead.
+USER_AGENT = "hybrid-rl-llm-explorer/0.1 (+https://github.com/ashyou09/Hybrid_RL_LLM_Explorer)"
+
 # Claude models that reject the `effort` setting (older generation).
 NO_EFFORT_MODELS = ("claude-haiku-4-5", "claude-sonnet-4-5")
 
@@ -117,7 +121,9 @@ class LLM:
     # ── providers ──────────────────────────────────────────────
     def _post(self, url: str, body: dict, headers: dict) -> dict:
         req = urllib.request.Request(url, data=json.dumps(body).encode(),
-                                     headers={"Content-Type": "application/json", **headers})
+                                     headers={"Content-Type": "application/json",
+                                              "Accept": "application/json",
+                                              "User-Agent": USER_AGENT, **headers})
         try:
             with urllib.request.urlopen(req, timeout=self.timeout) as resp:
                 return json.loads(resp.read())

@@ -70,3 +70,22 @@ def test_claude_request_shape(tmp_path, monkeypatch):
     assert "temperature" not in sent and sent["system"] == "sys"
     LLM("claude", model="claude-haiku-4-5", cache_dir=tmp_path).complete("hi2")
     assert "output_config" not in sent
+
+
+def test_http_requests_send_a_real_user_agent(tmp_path, monkeypatch):
+    """Groq/OpenRouter sit behind Cloudflare, which blocks 'Python-urllib' (error 1010)."""
+    import io
+    import urllib.request
+
+    seen = {}
+
+    def fake_urlopen(req, timeout=None):
+        seen["ua"] = req.get_header("User-agent")
+        seen["auth"] = req.get_header("Authorization")
+        return io.BytesIO(json.dumps({"choices": [{"message": {"content": "ok"}}]}).encode())
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setenv("GROQ_API_KEY", "test-key")
+    assert LLM("groq", cache_dir=tmp_path).complete("hi") == "ok"
+    assert seen["ua"] and "urllib" not in seen["ua"].lower()
+    assert seen["auth"] == "Bearer test-key"
