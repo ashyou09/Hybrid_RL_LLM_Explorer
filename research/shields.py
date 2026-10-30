@@ -28,8 +28,20 @@ from research.rules import to_text as rules_text
 
 SHIELDS = ("none", "lookup", "embedding", "llm_prior", "llm_rules", "oracle")
 LLM_SHIELDS = ("llm_prior", "llm_rules")
-LABELS = {"none": "S0 none", "lookup": "S1 lookup", "embedding": "S2 embedding",
-          "llm_prior": "S3 LLM prior", "llm_rules": "S4 LLM + experience", "oracle": "S6 oracle"}
+# Plain-language names (the S-codes are kept for the paper).
+LABELS = {"none": "S0 · No help",
+          "lookup": "S1 · Memory of past killers",
+          "embedding": "S2 · Similar-name check",
+          "llm_prior": "S3 · AI common sense only",
+          "llm_rules": "S4 · AI + experience (ours)",
+          "oracle": "S6 · Perfect knowledge (cheat)"}
+# One-line meaning of each shield, for people new to the experiment.
+MEANINGS = {"none": "Never blocks anything. The agent is on its own.",
+            "lookup": "Blocks only the exact tiles that killed the learner before (e.g. 'red lava').",
+            "embedding": "Blocks tiles whose NAME looks similar to a killer's name (the v0 ChromaDB method).",
+            "llm_prior": "Asks the AI 'is this tile dangerous?' using only its general knowledge.",
+            "llm_rules": "Asks the AI the same, but gives it the learner's rules and experience.",
+            "oracle": "Knows the true answer. Not a real method: it shows the best score possible."}
 
 JUDGE_SYSTEM = ("You protect an agent walking in a grid world. Decide whether stepping "
                 "onto a floor tile is likely to kill it. Reply with JSON only.")
@@ -96,7 +108,7 @@ class Shield:
         if not j.dangerous:
             return None, ""
         self.blocked[front] += 1
-        mask = [True, True, True]
+        mask = [True, True, True, True]       # agents use the first n_actions entries
         mask[FORWARD] = False
         return mask, f"BLOCKED {front}: {j.reason}"
 

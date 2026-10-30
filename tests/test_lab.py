@@ -22,5 +22,5 @@ def test_lab_end_to_end():
     assert len(at.metric) == 3
     click(at, "▶ Play episode")
     click(at, "Compare")
-    assert any("S6 oracle" in m.value for m in at.markdown)
+    assert any("Perfect knowledge" in m.value for m in at.markdown)
     click(at, "Run sweep")

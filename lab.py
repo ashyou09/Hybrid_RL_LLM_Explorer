@@ -102,19 +102,33 @@ writes rules. A **new agent** then plays rooms with hot tiles **nobody has seen*
 (molten rock, burning logs, white-hot metal) and harmless **look-alikes** (red carpet,
 a painting of a fire). Can the rules protect it without making it afraid of the decoys?
 
-**Shields** decide "is the tile in front deadly?" and forbid stepping on it:
+**A shield** is a safety guard: before the agent steps forward, it decides
+"is that tile deadly?" and, if yes, stops the step. We compare six guards:
 
-| Shield | How it decides |
+| Shield | In plain words |
 |---|---|
-| S0 none | never blocks |
-| S1 lookup | did this exact tile kill the learner? |
-| S2 embedding | does its name look like a killer's name? |
-| S3 LLM prior | the LLM's common sense only |
-| S4 LLM + experience | the LLM with the learner's rules and log (**ours**) |
-| S6 oracle | knows the truth: the best possible score |
+| S0 · No help | Never blocks. The agent is on its own. |
+| S1 · Memory of past killers | Blocks only the exact tiles that killed the learner ("red lava"). |
+| S2 · Similar-name check | Blocks tiles whose *name* looks like a killer's name. |
+| S3 · AI common sense only | Asks the AI, without telling it what happened. |
+| S4 · AI + experience (**ours**) | Asks the AI and gives it the learner's experience. |
+| S6 · Perfect knowledge (cheat) | Knows the true answer. Shows the best score possible. |
 
-**Measured so far** (10 seeds × 100 episodes): no shield 41% deaths · lookup 41% deaths
-(no help on new tiles) · oracle 0% deaths, 93% success. LLM results: pending.
+**Words used here**
+
+| Word | Meaning |
+|---|---|
+| Known danger | A hot tile the learner met (red lava, campfire, hot coals) |
+| **New danger** | A hot tile nobody has seen (molten rock, burning logs, white-hot metal) |
+| **Look-alike** | Harmless tile that looks dangerous (red carpet, painting of a fire) |
+| False alarm | Avoiding a harmless look-alike: being scared for no reason |
+| **Hallucination** | The AI says something false with confidence, e.g. "red carpet is deadly" (false alarm) or "molten rock is safe" (missed danger) |
+| Got stuck | Ran out of time (100 steps) without reaching the goal |
+| Seed | A fixed random setting, so a test can be repeated exactly |
+
+**Measured so far** (10 seeds × 100 episodes, rooms with new dangers): no help → 41% die ·
+memory of past killers → 41% die (no help on new tiles) · perfect knowledge → 0% die,
+93% reach the goal. AI results: pending.
 
 **How to use:** set the knobs on the left → tab 1 *Train* → tab 2 *Watch* an episode →
 tab 3 *Compare* shields → tab 4 *Sweep* a knob. LLM shields use **Groq** (free; needs `GROQ_API_KEY`); the

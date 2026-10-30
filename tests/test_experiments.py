@@ -26,8 +26,8 @@ def test_classify_oracle_is_perfect_and_lookup_misses_unseen(trained):
     _, _, shields, _, _ = ex.build(cfg, history, ["lookup", "oracle"], "fake")
     res = ex.classify(shields, cfg.deadly_categories)
     assert res["oracle"]["test_precision"] == 1.0 and res["oracle"]["test_recall"] == 1.0
-    assert res["lookup"]["blocked_share"]["unseen hazards"] == 0.0
-    assert "S6 oracle" in ex.classify_table(res)
+    assert res["lookup"]["blocked_share"]["NEW dangers"] == 0.0
+    assert "S6 · Perfect knowledge" in ex.classify_table(res)
 
 
 def test_evaluate_oracle_never_dies(trained):

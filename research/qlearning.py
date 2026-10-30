@@ -20,8 +20,7 @@ import numpy as np
 
 from research.env import EMPTY, GOAL, WALL
 
-N_ACTIONS = 3
-PREV = ("L", "R", "F")      # previous action as part of the state; "start" at reset
+PREV = ("L", "R", "F", "B")   # previous action as part of the state; "start" at reset
 
 
 def _kind(name: str) -> str:
@@ -32,25 +31,29 @@ def _kind(name: str) -> str:
 
 def state_of(view: dict, prev_action: int | None = None) -> str:
     prev = "start" if prev_action is None else PREV[prev_action]
-    return "|".join((view["front"], _kind(view["left"]), _kind(view["right"]),
-                     view["goal_dir"], prev))
+    parts = [view["front"], _kind(view["left"]), _kind(view["right"]), view["goal_dir"], prev]
+    if "stuck" in view:                       # only when the stuck_signal knob is on
+        parts.append("stuck" if view["stuck"] == "yes" else "moving")
+    if "ahead_visited" in view:               # only when the trail_memory knob is on
+        parts.append("trail" if view["ahead_visited"] == "yes" else "new")
+    return "|".join(parts)
 
 
 class QLearner:
     def __init__(self, alpha: float = 0.2, gamma: float = 0.95,
-                 rng: np.random.Generator | None = None):
-        self.alpha, self.gamma = alpha, gamma
+                 rng: np.random.Generator | None = None, n_actions: int = 3):
+        self.alpha, self.gamma, self.n_actions = alpha, gamma, n_actions
         self.rng = rng or np.random.default_rng()
         self.q: dict[str, np.ndarray] = {}
 
     def values(self, state: str) -> np.ndarray:
-        return self.q.get(state, np.zeros(N_ACTIONS))
+        return self.q.get(state, np.zeros(self.n_actions))
 
     def knows(self, state: str) -> bool:
         return state in self.q
 
     def act(self, state: str, epsilon: float = 0.0, mask=None) -> int:
-        allowed = [a for a in range(N_ACTIONS) if mask is None or mask[a]]
+        allowed = [a for a in range(self.n_actions) if mask is None or mask[a]]
         if not allowed:
             raise ValueError("All actions are masked")
         if self.rng.random() < epsilon:
@@ -60,20 +63,20 @@ class QLearner:
         return int(allowed[int(self.rng.choice(best))])
 
     def update(self, s: str, a: int, r: float, s2: str, done: bool) -> None:
-        q = self.q.setdefault(s, np.zeros(N_ACTIONS))
+        q = self.q.setdefault(s, np.zeros(self.n_actions))
         target = r if done else r + self.gamma * self.values(s2).max()
         q[a] += self.alpha * (target - q[a])
 
     # ── persistence ────────────────────────────────────────────
     def save(self, path: str | Path) -> None:
-        data = {"alpha": self.alpha, "gamma": self.gamma,
+        data = {"alpha": self.alpha, "gamma": self.gamma, "n_actions": self.n_actions,
                 "q": {s: v.round(4).tolist() for s, v in sorted(self.q.items())}}
         Path(path).write_text(json.dumps(data, indent=1))
 
     @classmethod
     def load(cls, path: str | Path, rng: np.random.Generator | None = None) -> "QLearner":
         data = json.loads(Path(path).read_text())
-        agent = cls(data["alpha"], data["gamma"], rng)
+        agent = cls(data["alpha"], data["gamma"], rng, data.get("n_actions", 3))
         agent.q = {s: np.asarray(v, dtype=float) for s, v in data["q"].items()}
         return agent
 

@@ -77,10 +77,10 @@ def out_dir(run_dir: Path, kind: str) -> Path:
 
 # ── L1.10: tile classification ─────────────────────────────────
 GROUPS = {
-    "seen hazards": lambda t: t.split == "train" and t.category != "none",
-    "unseen hazards": lambda t: t.split == "test" and t.category != "none",
-    "plain (train)": lambda t: t.split == "train" and t.category == "none",
-    "decoys": lambda t: t.is_decoy,
+    "known dangers": lambda t: t.split == "train" and t.category != "none",
+    "NEW dangers": lambda t: t.split == "test" and t.category != "none",
+    "plain floor": lambda t: t.split == "train" and t.category == "none",
+    "look-alikes (harmless)": lambda t: t.is_decoy,
 }
 
 
@@ -137,11 +137,13 @@ def evaluate_table(result: dict) -> str:
     def pct(x):
         return "—" if x is None else f"{x:.0%}"
 
-    rows = ["| Shield | Success | Death (all unseen hot tiles) | Hazards blocked | Decoys wrongly avoided |",
-            "|---|---|---|---|---|"]
+    rows = ["| Shield | Reached goal | Died (on a new hot tile) | Got stuck (ran out of time) "
+            "| Dangers blocked | False alarms (harmless tiles avoided) |",
+            "|---|---|---|---|---|---|"]
     for name, m in result.items():
         rows.append(f"| {LABELS[name]} | {ci(m['success_rate'])} | {ci(m['death_rate'])} | "
-                    f"{pct(m['hazard_blocking'])} | {pct(m['decoy_false_avoidance'])} |")
+                    f"{ci(m['timeout_rate'])} | {pct(m['hazard_blocking'])} | "
+                    f"{pct(m['decoy_false_avoidance'])} |")
     return "\n".join(rows)
 
 

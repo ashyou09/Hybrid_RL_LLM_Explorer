@@ -33,8 +33,9 @@ STEP_REWARD = -1.0
 DEATH_REWARD = -10.0
 GOAL_REWARD = 10.0
 
-ACTIONS = ("turn left", "turn right", "move forward")   # MiniGrid actions 0, 1, 2
-LEFT, RIGHT, FORWARD = 0, 1, 2
+ACTIONS = ("turn left", "turn right", "move forward", "turn around")
+LEFT, RIGHT, FORWARD, TURN_AROUND = 0, 1, 2, 3   # 0-2 are MiniGrid's; 3 is ours (knob)
+STUCK_AFTER = 3     # steps without changing cell before the agent "feels stuck"
 
 EMPTY, WALL, GOAL = "empty floor", "wall", "goal"
 
@@ -68,6 +69,9 @@ class TextGridEnv(MiniGridEnv):
         if cfg.hazard_count and not self.hazard_pool:
             raise ValueError(f"No deadly tiles in split {split!r} for {sorted(self.deadly)}")
         self.max_layout_tries = max_layout_tries
+        self.n_actions = 4 if cfg.turn_back_action else 3
+        self._still = 0     # steps since the agent last changed cell
+        self._visited: set = set()   # the agent's own trail this episode
         super().__init__(
             mission_space=MissionSpace(mission_func=lambda: "reach the goal safely"),
             grid_size=cfg.grid_size, max_steps=cfg.max_steps,
@@ -143,17 +147,34 @@ class TextGridEnv(MiniGridEnv):
             "left": self.cell_name(tuple(pos - right)),
             "right": self.cell_name(tuple(pos + right)),
             "goal_dir": self.goal_direction(),
-        }
+        } | ({"stuck": "yes" if self._still >= STUCK_AFTER else "no"}
+             if self.cfg.stuck_signal else {}) \
+          | ({"ahead_visited": "yes" if tuple(self.front_pos) in self._visited else "no"}
+             if self.cfg.trail_memory else {})
 
     # ── dynamics ───────────────────────────────────────────────
     def reset(self, *, seed=None, options=None):
+        self._still = 0
         obs, info = super().reset(seed=seed, options=options)
+        self._visited = {tuple(self.agent_pos)}
         info.update(text=self.text_obs(), event=None, tile=None)
         return obs, info
 
     def step(self, action):
+        if action == TURN_AROUND:
+            if self.n_actions < 4:
+                raise ValueError("turn around is disabled (turn_back_action: false)")
+            self.agent_dir = (self.agent_dir + 2) % 4
+            action = self.actions.done          # MiniGrid no-op: costs one step
+        before = tuple(self.agent_pos)
         obs, _, terminated, truncated, info = super().step(action)
+        here_pos = tuple(self.agent_pos)
+        moved = here_pos != before
+        self._still = 0 if moved else self._still + 1
         reward, event, tile = STEP_REWARD, None, None
+        if moved and here_pos in self._visited:
+            reward += self.cfg.revisit_penalty       # walking over its own trail again
+        self._visited.add(here_pos)
         here = self.grid.get(*self.agent_pos)
         if isinstance(here, DescribedTile):
             tile = here.tile.name

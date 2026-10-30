@@ -35,6 +35,10 @@ class Config:
     epsilon_end: float = 0.05
     epsilon_decay_fraction: float = 0.7  # share of training spent decaying epsilon
     epsilon_eval: float = 0.0          # exploration during evaluation (breaks loops if > 0)
+    turn_back_action: bool = False     # give the agent a 4th action: turn around (go back)
+    stuck_signal: bool = False         # agent senses "I have not moved for 3 steps"
+    trail_memory: bool = False         # agent senses whether the cell ahead is on its own trail
+    revisit_penalty: float = 0.0       # extra reward (≤ 0) for stepping onto an already visited cell
 
     # ── evaluation knobs ──────────────────────────────────────
     eval_seeds: int = 10

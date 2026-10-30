@@ -24,7 +24,7 @@ def epsilon_at(cfg: Config, episode: int) -> float:
 def train(cfg: Config, rng: np.random.Generator) -> tuple[QLearner, list[dict]]:
     """Train Agent A in training worlds. Returns the agent and one record per episode."""
     env = TextGridEnv(cfg, split="train")
-    agent = QLearner(cfg.alpha, cfg.gamma, rng)
+    agent = QLearner(cfg.alpha, cfg.gamma, rng, n_actions=env.n_actions)
     history = []
     for ep in range(cfg.train_episodes):
         eps = epsilon_at(cfg, ep)
