@@ -6,3 +6,11 @@ pyyaml>=6.0
 matplotlib>=3.8
 pillow>=10.0
 pytest>=8.0
+
+# The Lab panel (streamlit run lab.py)
+streamlit>=1.40
+pandas>=2.0
+
+# Optional extras:
+#   pip install anthropic               -> Claude provider
+#   pip install sentence-transformers   -> embedding shield S2 (CPU PyTorch, large)

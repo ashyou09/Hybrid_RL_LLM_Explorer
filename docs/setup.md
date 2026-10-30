@@ -48,8 +48,30 @@ v0 demo:
 pip install -r requirements.txt
 ```
 
-Research code: a separate, lighter `requirements-research.txt` arrives with step L1.1.
-The embedding comparison (PyTorch, CPU) will be an optional extra.
+Research code and the Lab (no PyTorch, no local LLM):
+
+```bash
+pip install -r requirements-research.txt
+```
+
+```bash
+python -m research --help
+```
+
+```bash
+streamlit run lab.py
+```
+
+Optional: `pip install anthropic` (Claude provider), `pip install sentence-transformers`
+(embedding shield S2; downloads a model from huggingface.co).
+
+### Network access
+
+The LLM providers must be reachable from where you run:
+`api.groq.com` (Groq), `openrouter.ai` (OpenRouter), `api.anthropic.com` (Claude),
+`huggingface.co` (embedding model). On a laptop or Colab this is normally fine. In a
+Claude cloud session, add the hosts under the environment's **Network access → Allowed
+domains** (environment menu in the session title bar → **Edit**).
 
 ## Hugging Face Space deployment
 

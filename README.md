@@ -85,7 +85,7 @@ Each level is a complete mini-project: a question, code, results, and two write-
 
 | Level | Name | Question | Status |
 |---|---|---|---|
-| **1** | **First Transfer** | Do rules from a few deaths protect a novice on never-seen hazards, without fearing look-alikes? | 💬 designing |
+| **1** | **First Transfer** | Do rules from a few deaths protect a novice on never-seen hazards, without fearing look-alikes? | 🟨 built; LLM runs pending |
 | 2 | Experience vs. Common Sense | When the world breaks common sense (water kills, fire is safe), does experience override the LLM? | ⬜ |
 | 3 | The Truth Filter | Does testing rules against reward stop wrong or noisy rules? | ⬜ |
 | 4 | When to Think | How often should the LLM be called; can a small model replace a big one? | ⬜ |
@@ -111,10 +111,29 @@ success rate, deaths on unseen hazards, decoys wrongly avoided, steps, LLM calls
 
 ### 🧪 The Lab
 
-Level 1 includes a visual lab so you can **watch** the agent and **turn knobs**
-like a scientist: number of hazards, number of decoys, how much the learner
-experienced, which LLM, how strict the matching is. Every episode can be replayed
-with the shield's reasoning shown (*"molten rock → BLOCKED, rule R2: hot things kill"*).
+A browser panel to **watch** the agent and **turn knobs** like a scientist: number of
+hazards and decoys, how much the learner experienced, which LLM, how strict the
+matching is. Every episode is replayed with the shield's reasoning under each frame.
+
+```bash
+streamlit run lab.py
+```
+
+![The Lab](results/level_1/figures/lab_screenshot.png)
+
+### 📊 First results (Level 1)
+
+Novice agent in rooms with **never-seen** hot tiles (10 seeds × 100 episodes, 95% CI):
+
+| Shield | Success | Deaths |
+|---|---|---|
+| None | 57.4% | 41.1% |
+| Exact lookup of past killers | 57.4% | 41.1% |
+| Oracle (perfect judgement) | 92.6% | 0.0% |
+| LLM shields | *pending: needs an API key* | |
+
+Remembering exact failures gives **no** protection on new hazards; a shield with good
+judgement is worth ~35 points of success. Details: [results/level_1/tables](results/level_1/tables/).
 
 ## 📁 Repository map
 
@@ -122,8 +141,11 @@ with the shield's reasoning shown (*"molten rock → BLOCKED, rule R2: hot thing
 ├── future_plan/        The plan: 6 levels, tracker, vision, review, decisions
 ├── conclusion/         Write-ups per level: paper.md (paper style) + explained.md (plain language)
 ├── docs/               Research idea, glossary, references, setup guide, v0 notes
-├── research/           (coming in Level 1) new research code
-├── results/            (coming in Level 1) configs, metrics, plots, replays
+├── research/           research code (python -m research --help)
+├── results/            curated figures and tables
+├── configs/            experiment settings (all knobs)
+├── tests/              automated tests (pytest)
+├── lab.py              the Lab panel (streamlit run lab.py)
 ├── src/                v0 prototype code
 ├── run_experiment.py   v0 demo (desktop, Pygame)
 └── app.py              v0 demo (web, Gradio — used by the Hugging Face Space)
