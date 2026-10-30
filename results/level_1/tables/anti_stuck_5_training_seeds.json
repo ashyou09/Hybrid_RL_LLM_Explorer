@@ -1,0 +1,302 @@
+[
+ {
+  "fix": "current",
+  "train_success": "70.8% \u00b1 16.5%",
+  "none_success": "46.0% \u00b1 11.5%",
+  "none_death": "45.6% \u00b1 3.9%",
+  "oracle_success": "76.6% \u00b1 15.9%",
+  "oracle_stuck": "23.4% \u00b1 15.9%",
+  "runs": [
+   {
+    "train": 0.7620000000000001,
+    "none": {
+     "success_rate": 0.508,
+     "death_rate": 0.43,
+     "timeout_rate": 0.062
+    },
+    "oracle": {
+     "success_rate": 0.8379999999999999,
+     "death_rate": 0.0,
+     "timeout_rate": 0.162
+    }
+   },
+   {
+    "train": 0.484,
+    "none": {
+     "success_rate": 0.244,
+     "death_rate": 0.43,
+     "timeout_rate": 0.326
+    },
+    "oracle": {
+     "success_rate": 0.496,
+     "death_rate": 0.0,
+     "timeout_rate": 0.504
+    }
+   },
+   {
+    "train": 0.798,
+    "none": {
+     "success_rate": 0.4959999999999999,
+     "death_rate": 0.502,
+     "timeout_rate": 0.002
+    },
+    "oracle": {
+     "success_rate": 0.85,
+     "death_rate": 0.0,
+     "timeout_rate": 0.15000000000000002
+    }
+   },
+   {
+    "train": 0.9380000000000001,
+    "none": {
+     "success_rate": 0.5860000000000001,
+     "death_rate": 0.41400000000000003,
+     "timeout_rate": 0.0
+    },
+    "oracle": {
+     "success_rate": 0.954,
+     "death_rate": 0.0,
+     "timeout_rate": 0.046
+    }
+   },
+   {
+    "train": 0.558,
+    "none": {
+     "success_rate": 0.466,
+     "death_rate": 0.506,
+     "timeout_rate": 0.028000000000000004
+    },
+    "oracle": {
+     "success_rate": 0.6940000000000001,
+     "death_rate": 0.0,
+     "timeout_rate": 0.306
+    }
+   }
+  ]
+ },
+ {
+  "fix": "stuck sense",
+  "train_success": "90.1% \u00b1 3.2%",
+  "none_success": "52.1% \u00b1 4.1%",
+  "none_death": "46.5% \u00b1 4.7%",
+  "oracle_success": "94.0% \u00b1 3.2%",
+  "oracle_stuck": "6.0% \u00b1 3.2%",
+  "runs": [
+   {
+    "train": 0.9439999999999997,
+    "none": {
+     "success_rate": 0.5700000000000001,
+     "death_rate": 0.43,
+     "timeout_rate": 0.0
+    },
+    "oracle": {
+     "success_rate": 0.978,
+     "death_rate": 0.0,
+     "timeout_rate": 0.022
+    }
+   },
+   {
+    "train": 0.8539999999999999,
+    "none": {
+     "success_rate": 0.44800000000000006,
+     "death_rate": 0.5519999999999999,
+     "timeout_rate": 0.0
+    },
+    "oracle": {
+     "success_rate": 0.914,
+     "death_rate": 0.0,
+     "timeout_rate": 0.086
+    }
+   },
+   {
+    "train": 0.874,
+    "none": {
+     "success_rate": 0.546,
+     "death_rate": 0.454,
+     "timeout_rate": 0.0
+    },
+    "oracle": {
+     "success_rate": 0.954,
+     "death_rate": 0.0,
+     "timeout_rate": 0.046
+    }
+   },
+   {
+    "train": 0.9120000000000001,
+    "none": {
+     "success_rate": 0.53,
+     "death_rate": 0.4699999999999999,
+     "timeout_rate": 0.0
+    },
+    "oracle": {
+     "success_rate": 0.9640000000000001,
+     "death_rate": 0.0,
+     "timeout_rate": 0.036
+    }
+   },
+   {
+    "train": 0.9200000000000002,
+    "none": {
+     "success_rate": 0.512,
+     "death_rate": 0.4200000000000001,
+     "timeout_rate": 0.06799999999999999
+    },
+    "oracle": {
+     "success_rate": 0.892,
+     "death_rate": 0.0,
+     "timeout_rate": 0.10800000000000001
+    }
+   }
+  ]
+ },
+ {
+  "fix": "revisit penalty",
+  "train_success": "75.6% \u00b1 19.3%",
+  "none_success": "48.6% \u00b1 12.3%",
+  "none_death": "49.0% \u00b1 11.1%",
+  "oracle_success": "81.4% \u00b1 17.7%",
+  "oracle_stuck": "18.6% \u00b1 17.7%",
+  "runs": [
+   {
+    "train": 0.7699999999999999,
+    "none": {
+     "success_rate": 0.484,
+     "death_rate": 0.454,
+     "timeout_rate": 0.062
+    },
+    "oracle": {
+     "success_rate": 0.7679999999999999,
+     "death_rate": 0.0,
+     "timeout_rate": 0.23199999999999998
+    }
+   },
+   {
+    "train": 0.38199999999999995,
+    "none": {
+     "success_rate": 0.25,
+     "death_rate": 0.708,
+     "timeout_rate": 0.041999999999999996
+    },
+    "oracle": {
+     "success_rate": 0.48600000000000004,
+     "death_rate": 0.0,
+     "timeout_rate": 0.514
+    }
+   },
+   {
+    "train": 0.876,
+    "none": {
+     "success_rate": 0.546,
+     "death_rate": 0.454,
+     "timeout_rate": 0.0
+    },
+    "oracle": {
+     "success_rate": 0.942,
+     "death_rate": 0.0,
+     "timeout_rate": 0.057999999999999996
+    }
+   },
+   {
+    "train": 0.842,
+    "none": {
+     "success_rate": 0.556,
+     "death_rate": 0.42799999999999994,
+     "timeout_rate": 0.016
+    },
+    "oracle": {
+     "success_rate": 0.9259999999999999,
+     "death_rate": 0.0,
+     "timeout_rate": 0.074
+    }
+   },
+   {
+    "train": 0.9099999999999999,
+    "none": {
+     "success_rate": 0.592,
+     "death_rate": 0.404,
+     "timeout_rate": 0.004
+    },
+    "oracle": {
+     "success_rate": 0.9460000000000001,
+     "death_rate": 0.0,
+     "timeout_rate": 0.054000000000000006
+    }
+   }
+  ]
+ },
+ {
+  "fix": "all three",
+  "train_success": "88.7% \u00b1 3.0%",
+  "none_success": "52.4% \u00b1 2.2%",
+  "none_death": "45.5% \u00b1 2.2%",
+  "oracle_success": "91.6% \u00b1 2.3%",
+  "oracle_stuck": "8.4% \u00b1 2.3%",
+  "runs": [
+   {
+    "train": 0.922,
+    "none": {
+     "success_rate": 0.508,
+     "death_rate": 0.438,
+     "timeout_rate": 0.054000000000000006
+    },
+    "oracle": {
+     "success_rate": 0.9,
+     "death_rate": 0.0,
+     "timeout_rate": 0.1
+    }
+   },
+   {
+    "train": 0.898,
+    "none": {
+     "success_rate": 0.518,
+     "death_rate": 0.4779999999999999,
+     "timeout_rate": 0.004
+    },
+    "oracle": {
+     "success_rate": 0.9480000000000001,
+     "death_rate": 0.0,
+     "timeout_rate": 0.052000000000000005
+    }
+   },
+   {
+    "train": 0.834,
+    "none": {
+     "success_rate": 0.506,
+     "death_rate": 0.47800000000000004,
+     "timeout_rate": 0.016
+    },
+    "oracle": {
+     "success_rate": 0.882,
+     "death_rate": 0.0,
+     "timeout_rate": 0.118
+    }
+   },
+   {
+    "train": 0.876,
+    "none": {
+     "success_rate": 0.524,
+     "death_rate": 0.458,
+     "timeout_rate": 0.018000000000000002
+    },
+    "oracle": {
+     "success_rate": 0.93,
+     "death_rate": 0.0,
+     "timeout_rate": 0.07
+    }
+   },
+   {
+    "train": 0.9040000000000001,
+    "none": {
+     "success_rate": 0.5660000000000001,
+     "death_rate": 0.422,
+     "timeout_rate": 0.012
+    },
+    "oracle": {
+     "success_rate": 0.922,
+     "death_rate": 0.0,
+     "timeout_rate": 0.078
+    }
+   }
+  ]
+ }
+]

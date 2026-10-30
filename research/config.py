@@ -28,7 +28,7 @@ class Config:
     deadly_categories: list[str] = field(default_factory=lambda: ["heat"])
 
     # ── learner (Agent A) knobs ───────────────────────────────
-    train_episodes: int = 6000
+    train_episodes: int = 10000
     alpha: float = 0.2                 # Q-learning step size
     gamma: float = 0.95                # discount
     epsilon_start: float = 1.0
@@ -36,7 +36,7 @@ class Config:
     epsilon_decay_fraction: float = 0.7  # share of training spent decaying epsilon
     epsilon_eval: float = 0.0          # exploration during evaluation (breaks loops if > 0)
     turn_back_action: bool = False     # give the agent a 4th action: turn around (go back)
-    stuck_signal: bool = False         # agent senses "I have not moved for 3 steps"
+    stuck_signal: bool = True          # agent senses "I have not moved for 3 steps" (on: see anti-stuck test)
     trail_memory: bool = False         # agent senses whether the cell ahead is on its own trail
     revisit_penalty: float = 0.0       # extra reward (≤ 0) for stepping onto an already visited cell
 

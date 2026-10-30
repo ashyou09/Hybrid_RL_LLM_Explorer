@@ -77,7 +77,8 @@ def test_observation_has_no_coordinates_or_danger_labels():
     _, info = env.reset(seed=3)
     for _ in range(30):
         text = info["text"]
-        assert set(text) == {"front", "left", "right", "goal_dir"}
+        core = {"front", "left", "right", "goal_dir"}
+        assert core <= set(text) <= core | {"stuck", "ahead_visited"}
         flat = " ".join(text.values())
         assert not re.search(r"\d", flat)
         assert "heat" not in flat and "deadly" not in flat
@@ -92,3 +93,14 @@ def test_compass():
     assert env.goal_direction() == "ahead"
     env.step(LEFT)               # facing up: goal is behind
     assert env.goal_direction() == "behind"
+
+
+def test_stuck_sense_turns_on_after_three_steps_in_place():
+    env = make(hazard_count=0, decoy_count=0, stuck_signal=True)
+    _, info = env.reset(seed=0)
+    assert info["text"]["stuck"] == "no"
+    for _ in range(3):
+        _, _, _, _, info = env.step(LEFT)
+    assert info["text"]["stuck"] == "yes"
+    _, _, _, _, info = env.step(FORWARD)  # three lefts: facing down, the cell below is open
+    assert info["text"]["stuck"] == "no"

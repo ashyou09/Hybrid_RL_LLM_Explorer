@@ -11,13 +11,17 @@ decoy_count: 2
 deadly_categories: [heat]
 
 # learner (Agent A)
-train_episodes: 6000
+train_episodes: 10000
 alpha: 0.2
 gamma: 0.95
 epsilon_start: 1.0
 epsilon_end: 0.05
 epsilon_decay_fraction: 0.7
 epsilon_eval: 0.0
+turn_back_action: false
+stuck_signal: true      # senses "I have not moved for 3 steps" (best in the 5-run anti-stuck test)
+trail_memory: false
+revisit_penalty: 0.0
 
 # evaluation
 eval_seeds: 10
