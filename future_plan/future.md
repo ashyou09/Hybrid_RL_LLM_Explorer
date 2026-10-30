@@ -199,22 +199,75 @@ false-avoidance, steps to goal, LLM calls.
 
 ### 1.12 Handover checklist (Level 1 → Level 2)
 
-- [ ] All L1 steps ticked in the tracker
-- [ ] Hypotheses L1-H1…H4 each marked supported / not supported, with numbers
-- [ ] Surprises and problems listed in `explained.md`
-- [ ] Level 2 section below rewritten in full detail using what we learned
+- [ ] All L1 steps ticked in the tracker *(L1.10–L1.12 still need the LLM / embedding runs)*
+- [ ] Hypotheses L1-H1…H4 each marked supported / not supported, with numbers *(H1 done; H2–H4 pending)*
+- [x] Surprises and problems listed in `explained.md`
+- [x] Level 2 section below rewritten in full detail using what we learned
 
 ---
 
-## Level 2 — Experience vs. Common Sense (outline)
+## Level 2 — Experience vs. Common Sense (full detail)
 
-- **Question:** when a world's dangers contradict common sense, does the LLM with
-  experience adapt where the LLM prior fails?
-- **Adds:** four categories (heat, liquid, sharp, chemical); intuitive vs.
-  counter-intuitive worlds; split results by world type.
-- **Key comparison:** S3 (prior) vs. S4 (experience). This is the doc's
-  "hallucination test".
-- **Reuses:** all Level 1 code; only catalog, world spec and evaluation splits grow.
+*Expanded at the Level 1 handover. Level 1's LLM runs (S2–S4) must be finished first,
+because Level 2 builds on their numbers.*
+
+### 2.1 Research question
+
+> When a world's dangers **contradict common sense** — water kills, fire is harmless —
+> does an LLM that reads the agent's experience (S4) adapt, while an LLM relying on
+> common sense alone (S3) fails?
+
+This is the research doc's "hallucination test": the LLM's plausible belief ("fire is
+dangerous") is wrong in this world, and only grounded experience can correct it.
+
+### 2.2 What Level 1 taught us (inputs to this design)
+
+- Exact lookup cannot transfer at all; the oracle bounds the gain at ~35 points of success.
+- A blocked learner times out ~7% of the time; report time-outs separately.
+- The experience budget matters: with 5 deaths the learner never died on a campfire.
+  Level 2 sweeps the budget per category.
+- Fake keyword matching blocks "painting of a fire": decoys work as intended.
+
+### 2.3 Hypotheses
+
+| ID | Hypothesis |
+|---|---|
+| L2-H1 | In intuitive worlds, S3 ≈ S4 (common sense is enough). |
+| L2-H2 | In counter-intuitive worlds, S3 dies on the "surprising" category and over-blocks the harmless "scary" one; S4 does neither. |
+| L2-H3 | S4's advantage grows with the experience budget. |
+| L2-H4 | Embedding retrieval (S2) fails in both world types on held-out tiles. |
+
+### 2.4 The worlds
+
+Four categories, each with ≥ 3 train tiles, ≥ 3 held-out test tiles and look-alike decoys:
+
+| Category | Train (examples) | Test (examples) | Decoys (examples) |
+|---|---|---|---|
+| heat | red lava, campfire, hot coals | molten rock, burning logs, white-hot plate | red carpet, painting of a fire |
+| liquid | deep water, flooded pit, swamp | river crossing, ice-cold lake, tar pool | blue rug, puddle sticker |
+| sharp | spike trap, broken glass, thorn bush | blade floor, nail bed, razor wire | grey gravel path, cactus painting |
+| chemical | acid pool, toxic sludge, bleach spill | chemical drum leak, corrosive puddle | green paint, lime-green mat |
+
+| World family | Deadly categories | Harmless categories |
+|---|---|---|
+| Intuitive | heat, sharp, chemical | liquid (shallow, safe here) |
+| Counter-intuitive | liquid | heat, sharp, chemical |
+
+Worlds are sampled per seed; results are split by family.
+
+### 2.5 Steps
+
+| Step | What | Done when |
+|---|---|---|
+| L2.1 | Extend the tile catalog to four categories (+ decoys) | catalog tests pass; every category has train/test/decoy tiles |
+| L2.2 | World families in config (`world_family: intuitive / counter`) | the env kills by family; tests cover both |
+| L2.3 | Per-family evaluation and tables (split results) | `evaluate` reports both families |
+| L2.4 | Classification benchmark for both families, all shields | precision/recall table per family |
+| L2.5 | Novice evaluation, both families | main table with CIs |
+| L2.6 | Experience-budget sweep per family (S3 vs S4) | plot |
+| L2.7 | Lab: world-family switch | visible in the panel |
+| L2.8 | Write `conclusion/level_2/` (paper + explained) | both written |
+| L2.9 | Handover: expand Level 3 | tracker updated |
 
 ## Level 3 — The Truth Filter (outline)
 

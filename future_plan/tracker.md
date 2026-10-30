@@ -22,20 +22,28 @@ Legend: ⬜ not started · 💬 discussing · 🟨 building · ✅ done
 | L1.3 | Text-layer env + layouts + local perception | ✅ | 2a693fb |
 | L1.4 | Episode replay (GIF) | ✅ | d007414 |
 | L1.5 | Agent A: tabular Q-learning | ✅ | 398aa33 — baseline: 39.9% deaths on unseen hot tiles |
-| L1.6 | Experience log | ✅ | this commit |
-| L1.7 | LLM adapter + cache | ⬜ | |
-| L1.8 | Reflection → rules | ⬜ | |
-| L1.9 | Shields (+ decisions in replay) | ⬜ | |
-| L1.10 | Tile-classification benchmark (first result) | ⬜ | |
-| L1.11 | Novice evaluation | ⬜ | |
-| L1.12 | Sweeps: difficulty, strictness, experience | ⬜ | |
-| L1.13 | Lab panel (Streamlit) | ⬜ | |
-| L1.14 | Write conclusion (paper + explained) | ⬜ | |
-| L1.15 | Handover to Level 2 | ⬜ | |
+| L1.6 | Experience log | ✅ | 9ead037 |
+| L1.7 | LLM adapter + cache | ✅ | 863bbc8 |
+| L1.8 | Reflection → rules | ✅ | 2707f91 |
+| L1.9 | Shields (+ decisions in replay) | ✅ | 7e7ab93 |
+| L1.10 | Tile-classification benchmark (first result) | 🟨 | ec1715f: built; LLM/embedding runs pending |
+| L1.11 | Novice evaluation | 🟨 | ec1715f: S0/S1/S6 measured; S2-S4 pending |
+| L1.12 | Sweeps: difficulty, strictness, experience | 🟨 | ec1715f: difficulty sweep (non-LLM) done |
+| L1.13 | Lab panel (Streamlit) | ✅ | tested headless and in a browser |
+| L1.14 | Write conclusion (paper + explained) | 🟨 | 41c6eca: draft; LLM sections pending |
+| L1.15 | Handover to Level 2 | 🟨 | Level 2 expanded in future.md; waits for LLM runs |
 
 ## Handover notes
 
 *(Written at the end of each level: what was learned, what changes for the next level.)*
+
+**Level 1 to Level 2 (partial handover, 2026-10-30).** Everything is built and tested.
+Measured: learner 90.7% success in training worlds; on never-seen hot tiles, no shield
+and exact lookup both give 41.1% deaths; oracle 0% deaths, 92.6% success.
+**Still open:** run S2 (embedding) and S3/S4 (LLM). This needs `GROQ_API_KEY` (or another
+provider) with network access to it, plus `sentence-transformers` and huggingface.co for
+S2. Then fill the [PENDING] parts of `conclusion/level_1/`. Level 2 is expanded in
+`future.md` and starts after those runs.
 
 ## Notes along the way
 
@@ -46,5 +54,10 @@ Legend: ⬜ not started · 💬 discussing · 🟨 building · ✅ done
 - **L1.5 baseline (no shield):** 0.4% deaths in training worlds vs. 39.9% deaths on
   never-seen hot tiles — the gap the LLM rules must close.
   See `results/level_1/tables/baseline_no_shield.md`.
+- **L1.7:** this cloud session cannot reach api.groq.com, openrouter.ai or huggingface.co
+  (network policy); api.anthropic.com is reachable. LLM runs need a key plus network access.
+- **L1.11:** evaluation resets the agent's tie-breaking RNG, so shields are compared on
+  identical draws; no-shield deaths are 41.1% (39.9% in the train command's own
+  evaluation, which used the training RNG; the intervals overlap).
 - **Fix:** Hugging Face Space repaired (Gradio header, current pipeline in `app.py`,
   snapshot deploy). Needs the `HF_TOKEN` GitHub secret to deploy.
