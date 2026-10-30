@@ -61,5 +61,21 @@ huggingface.co (blocked in the cloud session; run it on a laptop or Colab). Then
 - **L1.11:** evaluation resets the agent's tie-breaking RNG, so shields are compared on
   identical draws; no-shield deaths are 41.1% (39.9% in the train command's own
   evaluation, which used the training RNG; the intervals overlap).
+- **Anti-stuck experiment (2026-10-30).** The learner can get stuck turning in place or
+  walking back and forth. Four knobs were added (all off by default): `turn_back_action`,
+  `stuck_signal`, `trail_memory`, `revisit_penalty` (the v0 idea: walking over its own
+  trail costs extra). One training run per setting, 10 seeds × 100 test episodes:
+
+  | Fix | Train success (6k / 15k episodes) | Perfect-knowledge shield: got stuck (6k / 15k) |
+  |---|---|---|
+  | current | 90.7% / 92.3% | 7.4% / 4.9% |
+  | stuck sense | 83.6% / 60.7% | 3.6% / 28.9% |
+  | revisit penalty | 87.9% / 91.8% | 9.2% / 4.5% |
+  | trail memory + revisit penalty | 84.4% / 87.4% | 13.1% / 17.2% |
+  | all three | 71.9% / 92.8% | 17.2% / 6.2% |
+
+  **Conclusion:** results flip between runs, so one training run per setting cannot pick a
+  winner. Next: 5 training seeds per setting before changing the defaults. Longer training
+  alone already reduces getting stuck (7.4% → 4.9%).
 - **Fix:** Hugging Face Space repaired (Gradio header, current pipeline in `app.py`,
   snapshot deploy). Needs the `HF_TOKEN` GitHub secret to deploy.
