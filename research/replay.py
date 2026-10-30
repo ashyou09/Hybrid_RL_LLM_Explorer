@@ -6,6 +6,7 @@ shows the step, the agent's view, its action and why (e.g. a shield decision).
 
 from __future__ import annotations
 
+import textwrap
 from pathlib import Path
 from typing import Callable
 
@@ -17,7 +18,9 @@ from research.env import ACTIONS, DescribedTile, TextGridEnv
 Policy = Callable[[dict], tuple[int, str]]
 
 TILE_PX = 48
-CAPTION_LINES = 4
+FRAME_W = 560          # wide enough for readable captions
+CAPTION_LINES = 6
+WRAP = 78
 
 
 def _font(size: int):
@@ -39,12 +42,13 @@ def draw_frame(env: TextGridEnv, caption: list[str]) -> Image.Image:
                 draw.text((cx, cy), obj.tile.short, fill="white", font=font,
                           anchor="mm", stroke_width=2, stroke_fill="black")
 
-    line_h = 18
-    frame = Image.new("RGB", (grid.width, grid.height + line_h * CAPTION_LINES + 8), "white")
-    frame.paste(grid, (0, 0))
+    lines = [w for line in caption for w in textwrap.wrap(line, WRAP) or [""]][:CAPTION_LINES]
+    line_h, width = 18, max(grid.width, FRAME_W)
+    frame = Image.new("RGB", (width, grid.height + line_h * CAPTION_LINES + 8), "white")
+    frame.paste(grid, ((width - grid.width) // 2, 0))
     draw = ImageDraw.Draw(frame)
-    for i, line in enumerate(caption[:CAPTION_LINES]):
-        draw.text((6, grid.height + 4 + i * line_h), line, fill="black", font=_font(13))
+    for i, line in enumerate(lines):
+        draw.text((8, grid.height + 4 + i * line_h), line, fill="black", font=_font(13))
     return frame
 
 
@@ -56,6 +60,8 @@ def legend(env: TextGridEnv) -> str:
 def record_episode(env: TextGridEnv, policy: Policy, seed: int) -> tuple[list[Image.Image], dict]:
     """Play one episode and return its frames and a summary."""
     _, info = env.reset(seed=seed)
+    if hasattr(policy, "reset"):
+        policy.reset()
     frames = [draw_frame(env, ["step 0 — start", legend(env)])]
     total, steps, event = 0.0, 0, None
     while True:

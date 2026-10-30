@@ -28,7 +28,7 @@ class Config:
     deadly_categories: list[str] = field(default_factory=lambda: ["heat"])
 
     # ── learner (Agent A) knobs ───────────────────────────────
-    train_episodes: int = 3000
+    train_episodes: int = 6000
     alpha: float = 0.2                 # Q-learning step size
     gamma: float = 0.95                # discount
     epsilon_start: float = 1.0

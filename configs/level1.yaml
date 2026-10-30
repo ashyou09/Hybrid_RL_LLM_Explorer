@@ -11,7 +11,7 @@ decoy_count: 2
 deadly_categories: [heat]
 
 # learner (Agent A)
-train_episodes: 3000
+train_episodes: 6000
 alpha: 0.2
 gamma: 0.95
 epsilon_start: 1.0
