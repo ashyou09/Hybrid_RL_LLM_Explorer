@@ -31,7 +31,7 @@ PROVIDERS = {
     # name: (default model, env var with the key)
     "groq": ("llama-3.3-70b-versatile", "GROQ_API_KEY"),
     "openrouter": ("meta-llama/llama-3.3-70b-instruct:free", "OPENROUTER_API_KEY"),
-    "claude": ("claude-haiku-5-5", "ANTHROPIC_API_KEY"),   # cheapest Claude model
+    "claude": ("claude-haiku-4-5", "ANTHROPIC_API_KEY"),
     "ollama": ("llama3.2:3b", None),
     "fake": ("keyword-v1", None),
 }
@@ -41,6 +41,9 @@ OPENAI_COMPATIBLE_URLS = {
     "openrouter": "https://openrouter.ai/api/v1/chat/completions",
 }
 OLLAMA_URL = "http://localhost:11434/api/chat"
+
+# Claude models that reject the `effort` setting (older generation).
+NO_EFFORT_MODELS = ("claude-haiku-4-5", "claude-sonnet-4-5")
 
 
 class LLMUnavailable(RuntimeError):
@@ -151,9 +154,10 @@ class LLM:
             raise LLMUnavailable("pip install anthropic to use the claude provider") from e
         client = anthropic.Anthropic()
         try:
+            # short yes/no judgements: low effort where the model supports it
+            extra = {} if self.model in NO_EFFORT_MODELS else {"output_config": {"effort": "low"}}
             response = client.messages.create(
-                model=self.model, max_tokens=16000,
-                output_config={"effort": "low"},   # short yes/no judgements: keep cost minimal
+                model=self.model, max_tokens=16000, **extra,
                 **({"system": system} if system else {}),
                 messages=[{"role": "user", "content": prompt}],
             )

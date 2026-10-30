@@ -23,7 +23,7 @@
 | 2026-10-30 | LLM: open-weight Llama models via Groq free tier (Ollama for offline); OpenRouter backup; Claude as reference. |
 | 2026-10-30 | Run in the cloud (cloud session / Colab / HF Space); laptop needs only a browser. |
 
-| 2026-10-30 | Level 1 LLM runs use Claude Haiku 5.5 (`claude-haiku-5-5`, cheapest Claude model, effort low); Groq/OpenRouter remain supported. |
+| 2026-10-30 | Level 1 LLM runs use Claude Haiku 4.5 (`claude-haiku-4-5`), chosen by the team; Groq/OpenRouter remain supported. |
 
 ## Open questions
 

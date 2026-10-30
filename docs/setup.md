@@ -18,7 +18,7 @@ them from environment variables.
 |---|---|---|
 | `GROQ_API_KEY` | Groq (free tier, open Llama models) — main | Level 1, step L1.7 |
 | `OPENROUTER_API_KEY` | OpenRouter (free models) — backup | optional |
-| `ANTHROPIC_API_KEY` | Claude Haiku 5.5 (cheapest Claude model) — used for the Level 1 runs | Level 1 |
+| `ANTHROPIC_API_KEY` | Claude Haiku 4.5 — used for the Level 1 runs | Level 1 |
 
 ### Claude cloud session
 

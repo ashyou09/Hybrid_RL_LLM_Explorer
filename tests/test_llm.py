@@ -41,3 +41,32 @@ def test_extract_json_tolerates_fences_and_preamble():
     assert extract_json('Sure!\n```json\n{"a": 1}\n```') == {"a": 1}
     with pytest.raises(ValueError):
         extract_json("no json here")
+
+
+def test_claude_request_shape(tmp_path, monkeypatch):
+    """Haiku 4.5 gets no effort setting; newer models get effort=low."""
+    anthropic = pytest.importorskip("anthropic")
+    sent = {}
+
+    class Block:
+        type, text = "text", '{"rules": []}'
+
+    class Resp:
+        stop_reason, content = "end_turn", [Block()]
+
+    class Messages:
+        def create(self, **kw):
+            sent.clear()
+            sent.update(kw)
+            return Resp()
+
+    class Client:
+        messages = Messages()
+
+    monkeypatch.setattr(anthropic, "Anthropic", lambda: Client())
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test")
+    LLM("claude", cache_dir=tmp_path).complete("hi", system="sys")
+    assert sent["model"] == "claude-haiku-4-5" and "output_config" not in sent
+    assert "temperature" not in sent and sent["system"] == "sys"
+    LLM("claude", model="claude-haiku-5-5", cache_dir=tmp_path).complete("hi2")
+    assert sent["output_config"] == {"effort": "low"}
