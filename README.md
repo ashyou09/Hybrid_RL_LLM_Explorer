@@ -3,8 +3,8 @@ title: Hybrid RL-LLM Explorer
 emoji: 🧠
 colorFrom: red
 colorTo: yellow
-sdk: streamlit
-sdk_version: "1.32.0"
+sdk: gradio
+sdk_version: "5.50.0"
 app_file: app.py
 pinned: false
 ---
@@ -162,7 +162,7 @@ Desktop version (opens a Pygame window with a settings screen):
 python run_experiment.py
 ```
 
-Web version (needs `pip install gradio`):
+Web version (the same app as the Hugging Face Space; needs `pip install gradio==5.50.0`):
 
 ```bash
 python app.py

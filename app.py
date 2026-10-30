@@ -31,6 +31,10 @@ ANSI_RE = re.compile(r'\x1b\[[0-9;]*m')
 HF_STREAM_INTERVAL_SECS = 0.25   # how often Gradio updates UI
 HF_FRAME_SKIP = 3               # only enqueue every Nth rendered frame
 HF_FRAME_MAX_EDGE = 320         # downscale frames before sending to Gradio
+HF_STEP_DELAY = 0.05            # seconds between experiment steps on Spaces
+HF_PHASE1_DEATHS = 3            # deaths to collect before rule synthesis
+HF_PHASE3_EPISODES = 2          # smart-explorer test episodes
+HF_LAVA_TILES = 2               # lava tiles per layout
 
 class _Capture:
     def __init__(self, orig):
@@ -62,7 +66,7 @@ class HeadlessDisplay:
         self._frame_skip = max(1, int(frame_skip))
         self._frame_ctr = 0
     def set_phase(self, t): self._phase = t; LOG_Q.put(f"▶ {t}")
-    def render_frame(self, rgb=None):
+    def render_frame(self, rgb=None, **_overlay):   # overlay args are desktop-only
         if rgb is not None:
             self._frame_ctr += 1
             if (self._frame_ctr % self._frame_skip) != 0:
@@ -85,55 +89,37 @@ _thread  = None
 
 
 def run_experiment_thread():
+    """Full v0 pipeline: Phase 1 exploration -> LLM rule synthesis -> Phase 3."""
     global _running
     try:
-        import src.env.environments as environments
-        import gymnasium as gym
-        from src.core.rl_core           import DQNAgent
-        from src.core.memory_hub        import MemoryHub
-
-        # Inject headless display as the global `display` in run_experiment
         import run_experiment as exp_mod
-        disp = HeadlessDisplay()
-        exp_mod.display = disp
-        # Slow down stepping a bit on HF to reduce load (deadlines are wall-clock).
-        exp_mod.TIMING = exp_mod.ExperimentTiming(step_delay_secs=0.18)
+        import src.env.environments as environments
+        from src.core.memory_hub import MemoryHub
+        from src.core.rl_core import RLExplorer, clear_learning_log
 
-        memory  = MemoryHub()
-        agent_a = DQNAgent()
+        # Inject the headless display as the global `display` in run_experiment
+        exp_mod.display = HeadlessDisplay()
+        exp_mod.STEP_DELAY = HF_STEP_DELAY
+        environments.LavaRoomEnv.LAVA_COUNT = HF_LAVA_TILES
 
-        # ── Phase 1: Lava Room ──────────────────────────────
-        disp.set_phase("PHASE 1 — Lava Room (RL Exploration)")
-        LOG_Q.put("─"*48)
-        LOG_Q.put("[Agent A] Entering MiniGrid-LavaRoom-v0")
-        LOG_Q.put("─"*48)
-        hazard_1 = exp_mod.run_learning_phase(
-            "MiniGrid-LavaRoom-v0",
-            agent_a,
-            memory,
-            truth_episodes=3,
-        )
-        LOG_Q.put(f"Stepwise mode complete: learned Lava rule = {hazard_1}.")
-
-        # TEMPORARILY PAUSED FOR STEP-WISE DEVELOPMENT:
-        # disp.set_phase("PHASE 2 — Sand Room (RL Exploration)")
-        # hazard_2 = exp_mod.run_learning_phase("MiniGrid-QuicksandRoom-v0", agent_a, memory)
-        # LOG_Q.put(f"Conclusion: must avoid {hazard_1} and {hazard_2}.")
-        #
-        # disp.set_phase("PHASE 3 — Final Exam")
-        # exp_mod.run_final_exam("MiniGrid-CombinedTesting-v0", memory)
+        clear_learning_log()
+        memory = MemoryHub()
+        exp_mod.run_phase1(RLExplorer(), memory,
+                           min_events=HF_PHASE1_DEATHS,
+                           max_episodes=HF_PHASE1_DEATHS * 10)
+        exp_mod.run_phase3(memory, max_episodes=HF_PHASE3_EPISODES)
 
         LOG_Q.put("Experiment complete! ✓")
 
     except Exception as e:
-        LOG_Q.put(f"[ERROR] {e}")
+        LOG_Q.put(f"[ERROR] {e.__class__.__name__}: {e}")
     finally:
         _running = False
 
 
 def run_dfs_thread():
-    """Skip RL phase entirely — run OnlineExplorerAgent directly through all
-    3 rooms using DFS + LLM periodic consultation (no prior rule learning)."""
+    """Skip learning entirely — run the explorer with an empty rule memory,
+    as a comparison for the full pipeline."""
     global _running
     try:
         import src.env.environments as environments
@@ -166,7 +152,7 @@ def run_dfs_thread():
                 LOG_Q.put(f"[DFS] Episode {episode} starting…")
 
                 while time.time() < deadline:
-                    disp.wait(0.18)
+                    disp.wait(HF_STEP_DELAY)
                     action = explorer.act(env, obs)
                     obs, reward, terminated, truncated, _ = env.step(action)
                     disp.render_frame(env.render())
@@ -335,7 +321,7 @@ with gr.Blocks(css=CSS, title="Hybrid RL→LLM→Explorer") as demo:
         with gr.Column(scale=1):
             log_out = gr.HTML(
                 label="Live Log",
-                value="<p style='color:#6e7681;font-family:Monaco'>Choose a mode and press Start or Use DFS…</p>",
+                value="<p style='color:#6e7681;font-family:Monaco'>Press Start to run the full pipeline, or Explorer only for comparison…</p>",
             )
 
     with gr.Row(equal_height=True):
@@ -346,7 +332,7 @@ with gr.Blocks(css=CSS, title="Hybrid RL→LLM→Explorer") as demo:
             elem_id="btn-start",
         )
         dfs_btn = gr.Button(
-            "🗺  Use DFS  (Pure DFS + LLM Hints)",
+            "🗺  Explorer only  (no learned rules)",
             variant="secondary",
             size="lg",
             elem_id="btn-dfs",
@@ -359,17 +345,15 @@ with gr.Blocks(css=CSS, title="Hybrid RL→LLM→Explorer") as demo:
     </div>
     """)
 
-    start_btn.click(
-        fn=lambda: start_and_stream(mode="hybrid"),
-        inputs=[],
-        outputs=[frame_out, log_out],
-    )
+    # Named generator functions: Gradio only streams if fn is a generator function.
+    def start_hybrid():
+        yield from start_and_stream(mode="hybrid")
 
-    dfs_btn.click(
-        fn=lambda: start_and_stream(mode="dfs"),
-        inputs=[],
-        outputs=[frame_out, log_out],
-    )
+    def start_explorer_only():
+        yield from start_and_stream(mode="dfs")
+
+    start_btn.click(fn=start_hybrid, inputs=[], outputs=[frame_out, log_out])
+    dfs_btn.click(fn=start_explorer_only, inputs=[], outputs=[frame_out, log_out])
 
 if __name__ == "__main__":
     demo.launch()
