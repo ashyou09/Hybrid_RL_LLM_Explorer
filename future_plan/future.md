@@ -222,7 +222,8 @@ dangerous") is wrong in this world, and only grounded experience can correct it.
 
 ### 2.2 What Level 1 taught us (inputs to this design)
 
-- Exact lookup cannot transfer at all; the oracle bounds the gain at ~35 points of success.
+- Exact lookup cannot transfer at all; the oracle bounds the gain at ~40 points of success.
+- One training run can be lucky: report results over several training seeds (anti-stuck test).
 - A blocked learner times out ~7% of the time; report time-outs separately.
 - The experience budget matters: with 5 deaths the learner never died on a campfire.
   Level 2 sweeps the budget per category.

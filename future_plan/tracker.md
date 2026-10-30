@@ -38,8 +38,9 @@ Legend: ⬜ not started · 💬 discussing · 🟨 building · ✅ done
 *(Written at the end of each level: what was learned, what changes for the next level.)*
 
 **Level 1 to Level 2 (partial handover, 2026-10-30).** Everything is built and tested.
-Measured: learner 90.7% success in training worlds; on never-seen hot tiles, no shield
-and exact lookup both give 41.1% deaths; oracle 0% deaths, 92.6% success.
+Measured (stuck sense on, 10 000 episodes): learner 94.1% success in training worlds; on
+never-seen hot tiles, no shield and exact lookup both give 42.4% deaths; oracle 0% deaths,
+97.8% success, 2.2% stuck. Older numbers below are kept as history.
 **Still open:** run S3/S4 (LLM) with Groq (Llama 3.3 70B). Groq is reachable from the
 Hugging Face Space (add `GROQ_API_KEY` as a Space secret, run *Compare shields* with
 6000/10/100 and download the JSON) or from a laptop/Colab (`python -m research evaluate`).

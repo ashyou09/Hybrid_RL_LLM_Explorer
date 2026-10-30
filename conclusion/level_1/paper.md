@@ -10,10 +10,10 @@ they have not met. We study whether a language model, reading a reinforcement-le
 agent's sparse failure log, can write rules that protect a *novice* agent against
 **held-out** hazards while sparing **look-alike decoys**. In a MiniGrid room with a
 natural-language tile layer, a tabular Q-learning agent trained on three hot tiles
-reaches the goal in 90.7% of training episodes but dies in 41.1% [39.0, 43.6] of test
+reaches the goal in 94.1% of training episodes but dies in 42.4% [39.4, 45.3] of test
 episodes containing only unseen hot tiles. An exact-match lookup of past killers gives
 no protection (identical to no shield), while an oracle shield removes all deaths and
-raises success from 57.4% to 92.6%. **[PENDING]** Results for embedding retrieval and
+raises success from 57.5% to 97.8%. **[PENDING]** Results for embedding retrieval and
 for LLM shields with and without experience.
 
 ## 1. Introduction
@@ -30,7 +30,9 @@ Contributions of this level:
 1. A text-layer gridworld with hidden danger categories, held-out hazards and decoys,
    in which a lookup of past failures provably cannot succeed.
 2. A paired evaluation protocol comparing six shields from "none" to "oracle".
-3. Baselines bounding the achievable improvement (57.4% → 92.6% success).
+3. Baselines bounding the achievable improvement (57.5% → 97.8% success).
+5. A stuck-sense signal that makes the learner reliable across training runs
+   (getting stuck with a perfect shield: 23.4% ± 15.9% → 6.0% ± 3.2% over 5 training runs).
 4. **[PENDING]** The measured position of LLM- and embedding-based shields within that bound.
 
 ## 2. Related Work
@@ -64,10 +66,11 @@ Observation: the names of the front, left and right cells and a goal compass
 
 ### 3.2 Learner (Agent A)
 
-Tabular Q-learning (α = 0.2, γ = 0.95, ε linearly 1.0 → 0.05 over 70% of 6 000
+Tabular Q-learning (α = 0.2, γ = 0.95, ε linearly 1.0 → 0.05 over 70% of 10 000
 episodes). State = (front cell name, kind of left/right cell ∈ {wall, open, tile}, goal
-direction, previous action). The previous action removes left–right oscillation
-(without it ~40% of episodes time out).
+direction, previous action, stuck flag). The previous action removes left–right
+oscillation (without it ~40% of episodes time out); the stuck flag ("no change of cell
+for 3 steps") makes training reliable across seeds (see `results/level_1/tables/anti_stuck_5_training_seeds.md`).
 
 ### 3.3 Rule synthesis (sparse reflection)
 
@@ -95,23 +98,23 @@ encounters of decoys).
 
 ## 5. Results
 
-**Learner.** 90.7% [88.6, 92.6] success and 0.4% [0.0, 0.9] deaths in training worlds
+**Learner.** 94.1% [92.7, 95.6] success and 0.7% [0.3, 1.1] deaths in training worlds
 (`python -m research train`).
 
 **Novice in test worlds** (`python -m research evaluate`):
 
 | Shield | Success | Death | Hazards blocked | Decoys avoided |
 |---|---|---|---|---|
-| S0 none | 57.4% [55.1, 59.4] | 41.1% [39.0, 43.6] | 0% | 0% |
-| S1 lookup | 57.4% [55.1, 59.4] | 41.1% [39.0, 43.6] | 0% | 0% |
+| S0 none | 57.5% [54.5, 60.5] | 42.4% [39.4, 45.3] | 0% | 0% |
+| S1 lookup | 57.5% [54.5, 60.5] | 42.4% [39.4, 45.3] | 0% | 0% |
 | S2 embedding | **[PENDING]** | | | |
 | S3 LLM prior | **[PENDING]** | | | |
 | S4 LLM + experience | **[PENDING]** | | | |
-| S6 oracle | 92.6% [90.9, 94.4] | 0.0% [0.0, 0.0] | 100% | 0% |
+| S6 oracle | 97.8% [97.0, 98.6] | 0.0% [0.0, 0.0] | 100% | 0% |
 
 **Difficulty sweep** (`python -m research sweep --knob hazard_count --values 1,2,4,6`):
-deaths without a shield rise 15.9% → 28.8% → 54.5% → 74.6% for 1, 2, 4, 6 hazards; the
-oracle remains at 0% with success 98.7% → 74.3%.
+deaths without a shield rise 13.8% → 30.2% → 53.9% → 74.7% for 1, 2, 4, 6 hazards; the
+oracle remains at 0% with success 99.9% → 80.4%.
 
 | Hypothesis | Status |
 |---|---|
@@ -124,8 +127,8 @@ oracle remains at 0% with success 98.7% → 74.3%.
 
 The lookup result is by construction but important: it shows that the evaluation
 cannot be passed by memorising failures, which the v0 prototype's design could not rule
-out. The oracle gap (35 points of success, 41 points of deaths) is the room available to
-any semantic shield. Even a perfect shield leaves 7.4% time-outs, because the learner's
+out. The oracle gap (40 points of success, 42 points of deaths) is the room available to
+any semantic shield. Even a perfect shield leaves 2.2% time-outs, because the learner's
 policy was never trained with masked actions; a shield-aware learner is future work.
 
 ## 7. Limitations

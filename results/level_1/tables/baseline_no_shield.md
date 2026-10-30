@@ -1,21 +1,25 @@
 # Baseline: Agent A with no shield (S0)
 
-Agent A trained by tabular Q-learning for 6 000 episodes in training worlds, then
-evaluated greedily over 10 seeds × 100 fresh layouts per split (95% bootstrap CI over seeds).
+Agent A trained by tabular Q-learning for 10 000 episodes in training worlds (stuck sense
+on), then evaluated greedily over 10 seeds × 100 fresh layouts per split (95% bootstrap
+CI over seeds).
 
-| Worlds | Success | Death | Time-out |
+| Worlds | Reached goal | Died | Got stuck |
 |---|---|---|---|
-| Training worlds (seen hot tiles + plain ground) | 90.7% [88.6%, 92.6%] | 0.4% [0.0%, 0.9%] | 8.9% [7.2%, 10.8%] |
-| Test worlds (never-seen hot tiles + decoys) | 59.1% [57.2%, 61.0%] | 39.9% [38.3%, 41.6%] | 1.0% [0.4%, 1.6%] |
+| Training worlds (known hot tiles + plain floor) | 94.1% [92.7%, 95.6%] | 0.7% [0.3%, 1.1%] | 5.2% [3.9%, 6.6%] |
+| Test worlds (NEW hot tiles + look-alikes) | 57.5% [54.5%, 60.5%] | 42.4% [39.4%, 45.3%] | 0.1% [0.0%, 0.3%] |
 
-Deaths in test worlds by tile (1 000 episodes): molten rock: 153, white-hot metal plate: 133, burning log pile: 113.
-No decoy ever killed the agent (decoys are harmless by design).
+Deaths in test worlds by tile (1 000 episodes): molten rock: 147, white-hot metal plate: 143, burning log pile: 134. No look-alike ever killed the agent
+(they are harmless by design).
 
-**Reading:** the learner avoids hot tiles it has met (0.4% deaths), but walks into
-never-seen hot tiles in ~40% of test episodes. This is the gap the LLM rules must close.
+**Reading:** the learner avoids the hot tiles it has met, but walks into NEW hot tiles in
+~42% of test episodes. This is the gap the AI rules must close.
 
-Reproduce (code from the L1.5 commit onward; deterministic for a given seed):
+Reproduce:
 
 ```bash
-python -m research train --config configs/level1.yaml
+python -m research train
 ```
+
+History: before stuck sense was switched on (6 000 episodes, one training run) the same
+table read 90.7% / 39.9%; see `anti_stuck_5_training_seeds.md` for why it changed.

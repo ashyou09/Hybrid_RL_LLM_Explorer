@@ -126,9 +126,9 @@ a painting of a fire). Can the rules protect it without making it afraid of the 
 | Got stuck | Ran out of time (100 steps) without reaching the goal |
 | Seed | A fixed random setting, so a test can be repeated exactly |
 
-**Measured so far** (10 seeds × 100 episodes, rooms with new dangers): no help → 41% die ·
-memory of past killers → 41% die (no help on new tiles) · perfect knowledge → 0% die,
-93% reach the goal. AI results: pending.
+**Measured so far** (10 seeds × 100 episodes, rooms with new dangers): no help → 42% die ·
+memory of past killers → 42% die (no help on new tiles) · perfect knowledge → 0% die,
+98% reach the goal. AI results: pending.
 
 **How to use:** set the knobs on the left → tab 1 *Train* → tab 2 *Watch* an episode →
 tab 3 *Compare* shields → tab 4 *Sweep* a knob. LLM shields use **Groq** (free; needs `GROQ_API_KEY`); the

@@ -136,13 +136,13 @@ Novice agent in rooms with **never-seen** hot tiles (10 seeds × 100 episodes, 9
 
 | Shield | Reached goal | Died |
 |---|---|---|
-| S0 · No help | 57.4% | 41.1% |
-| S1 · Memory of past killers | 57.4% | 41.1% |
-| S6 · Perfect knowledge (cheat) | 92.6% | 0.0% |
+| S0 · No help | 57.5% | 42.4% |
+| S1 · Memory of past killers | 57.5% | 42.4% |
+| S6 · Perfect knowledge (cheat) | 97.8% | 0.0% |
 | LLM shields (Groq, Llama 3.3 70B) | *pending: run on the Space once the Groq key is set* | |
 
 Remembering exact failures gives **no** protection on new hazards; a shield with good
-judgement is worth ~35 points of success. Details: [results/level_1/tables](results/level_1/tables/).
+judgement is worth ~40 points of success. Details: [results/level_1/tables](results/level_1/tables/).
 
 ## 📁 Repository map
 

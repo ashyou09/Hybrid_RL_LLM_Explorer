@@ -60,17 +60,17 @@ going to earn its place, it must handle things the agent has **not** experienced
 
 ## 5. What happened?
 
-**The learner learned.** After 6 000 training episodes it reaches the goal in 90.7% of
-training rooms and dies in only 0.4%. It learned to avoid red lava and hot coals.
+**The learner learned.** After 10 000 training episodes it reaches the goal in 94.1% of
+training rooms and dies in only 0.7%. It learned to avoid red lava and hot coals.
 
 **But it walks into new hot tiles.** In test rooms with never-seen hot tiles it dies in
-41.1% of episodes.
+42.4% of episodes.
 
 | Shield | Success | Deaths | Decoys wrongly avoided |
 |---|---|---|---|
-| S0 none | 57.4% | 41.1% | 0% |
-| S1 lookup | 57.4% | 41.1% | 0% |
-| S6 oracle | 92.6% | 0.0% | 0% |
+| S0 · No help | 57.5% | 42.4% | 0% |
+| S1 · Memory of past killers | 57.5% | 42.4% | 0% |
+| S6 · Perfect knowledge (cheat) | 97.8% | 0.0% | 0% |
 | S2 embedding | *not run yet* | | |
 | S3 LLM prior | *not run yet* | | |
 | S4 LLM + experience | *not run yet* | | |
@@ -78,11 +78,11 @@ training rooms and dies in only 0.4%. It learned to avoid red lava and hot coals
 | What we expected | What happened | Why |
 |---|---|---|
 | L1-H1: lookup won't help on new tiles | **Confirmed.** Lookup = no shield, to the decimal | It only knows tiles that killed the learner, and none of those appear in tests |
-| A good shield would help a lot | **Confirmed.** The oracle removes every death and adds 35 points of success | So the size of the prize for S3/S4 is known: somewhere between 57% and 93% success |
+| A good shield would help a lot | **Confirmed.** Perfect knowledge removes every death and adds 40 points of success | So the size of the prize for S3/S4 is known: somewhere between 57% and 98% success |
 | L1-H2 to H4 (about the LLM and embeddings) | **Not measured yet** | Needs the free Groq key, run on the Hugging Face Space or a laptop |
 
-**Harder rooms:** with more hot tiles, deaths without a shield climb from 16% (1 hot tile)
-to 75% (6 hot tiles); the oracle stays at 0% throughout.
+**Harder rooms:** with more hot tiles, deaths without a shield climb from 14% (1 hot tile)
+to 75% (6 hot tiles); with perfect knowledge it stays at 0% throughout.
 
 ## 6. What surprised us / what went wrong
 
@@ -93,7 +93,14 @@ to 75% (6 hot tiles); the oracle stays at 0% throughout.
 - **Lookup knew only 2 of 3 training hazards.** With a budget of 5 deaths, the learner
   happened to die on lava and coals but never on a campfire. Even "seen" knowledge is
   partial — a realistic situation for the LLM to deal with.
-- **A blocked agent can still get stuck.** With the oracle, 7.4% of episodes time out:
+- **The robot got stuck turning on the spot.** You noticed it in the Lab. With perfect
+  knowledge it timed out in 7.4% of episodes, and over 5 separate training runs the
+  average was even worse (23%). Giving it a "stuck sense" (I haven't moved for 3 steps)
+  fixed it: 6% on average, 2.2% in the main run. Your idea of an extra cost for walking
+  over its own path did not help on its own.
+- **One training run can be lucky.** The first learner scored 90.7%, but the average of five
+  runs was 71%. That is why results must be checked over several training runs.
+- **(Earlier note)** With the oracle, 7.4% of episodes timed out:
   when the way forward is blocked, the simple learner sometimes circles.
 - **Network limits.** This cloud session cannot reach Groq, OpenRouter or Hugging Face.
   So the LLM runs (free Groq, Llama 3.3 70B) happen on the Hugging Face Space or a
@@ -111,7 +118,7 @@ to 75% (6 hot tiles); the oracle stays at 0% throughout.
 | Shield | Filter that forbids unsafe moves | blocks "move forward" into lava |
 | Oracle | A cheating method that shows the best possible score | S6 |
 | Paired comparison | Every method gets the exact same test rooms and luck | all shields use the same seeds |
-| Confidence interval | Range where the true value probably is | 41.1% [39.0%, 43.6%] |
+| Confidence interval | Range where the true value probably is | 42.4% [39.4%, 45.3%] |
 | Sparse reflection | Calling the LLM rarely (once, after 5 deaths) | one reflection call per run |
 
 ## 8. What this means for the next level
