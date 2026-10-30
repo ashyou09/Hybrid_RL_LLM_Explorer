@@ -97,17 +97,23 @@ Live status: [future_plan/tracker.md](future_plan/tracker.md)
 
 ### What we compare (Level 1)
 
-| Method | Decides "is this tile dangerous?" by… |
-|---|---|
-| No shield | never blocking |
-| Exact lookup | "did this exact tile kill me before?" |
-| Embedding retrieval | "does this text look similar to a killer?" (the v0 method) |
-| LLM, no experience | common sense only |
-| **LLM + experience (ours)** | common sense **and** what actually happened |
-| Oracle | knowing the truth (upper limit) |
+A **shield** is a safety guard: before the robot steps forward it decides "is that tile
+deadly?" and, if yes, stops the step.
 
-Measured over 10 seeds × 100 episodes, with 95% confidence intervals:
-success rate, deaths on unseen hazards, decoys wrongly avoided, steps, LLM calls.
+| Shield | In plain words |
+|---|---|
+| S0 · No help | Never blocks. The robot is on its own. |
+| S1 · Memory of past killers | Blocks only the exact tiles that killed the learner ("red lava"). |
+| S2 · Similar-name check | Blocks tiles whose *name* looks like a killer's (the v0 method). |
+| S3 · AI common sense only | Asks the AI, without telling it what happened. |
+| **S4 · AI + experience (ours)** | Asks the AI and gives it the learner's experience. |
+| S6 · Perfect knowledge (cheat) | Knows the truth. Not a real method: shows the best score possible. |
+
+**Hallucination** here means the AI is confidently wrong: calling a harmless red carpet
+deadly (a *false alarm*) or calling molten rock safe (a *missed danger*).
+
+Measured over 10 seeds × 100 episodes, with 95% confidence intervals: reached goal,
+died on a new hot tile, got stuck (ran out of time), dangers blocked, false alarms.
 
 ### 🧪 The Lab
 
@@ -128,11 +134,11 @@ streamlit run lab.py
 
 Novice agent in rooms with **never-seen** hot tiles (10 seeds × 100 episodes, 95% CI):
 
-| Shield | Success | Deaths |
+| Shield | Reached goal | Died |
 |---|---|---|
-| None | 57.4% | 41.1% |
-| Exact lookup of past killers | 57.4% | 41.1% |
-| Oracle (perfect judgement) | 92.6% | 0.0% |
+| S0 · No help | 57.4% | 41.1% |
+| S1 · Memory of past killers | 57.4% | 41.1% |
+| S6 · Perfect knowledge (cheat) | 92.6% | 0.0% |
 | LLM shields (Groq, Llama 3.3 70B) | *pending: run on the Space once the Groq key is set* | |
 
 Remembering exact failures gives **no** protection on new hazards; a shield with good
