@@ -1,0 +1,31 @@
+# Level 1 — First Transfer. All knobs for a run; override any of them with
+#   python -m research <command> --config configs/level1.yaml --set key=value
+name: level1
+seed: 0
+
+# world
+grid_size: 7
+max_steps: 100
+hazard_count: 3
+decoy_count: 2
+deadly_categories: [heat]
+
+# learner (Agent A)
+train_episodes: 3000
+alpha: 0.2
+gamma: 0.95
+epsilon_start: 1.0
+epsilon_end: 0.05
+epsilon_decay_fraction: 0.7
+epsilon_eval: 0.0
+
+# evaluation
+eval_seeds: 10
+eval_episodes: 100
+
+# rules / shields (from step L1.7)
+experience_budget: 5
+shield: none
+llm_provider: groq
+llm_model: ""
+embed_threshold: 0.65
