@@ -11,3 +11,7 @@ learning_log.json
 dist/
 build/
 .env
+.env.*
+.pytest_cache/
+.ipynb_checkpoints/
+*.log

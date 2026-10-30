@@ -20,7 +20,8 @@ publishable research project. It merges:
 | [04_open_questions.md](04_open_questions.md) | Decisions still needed, plus a decision log |
 
 Write-ups for each level live in [`../conclusion/`](../conclusion/): a paper-format
-version and a plain-language version.
+version and a plain-language version. Background (research idea summary, glossary,
+references, setup) is in [`../docs/`](../docs/).
 
 ## Workflow
 
