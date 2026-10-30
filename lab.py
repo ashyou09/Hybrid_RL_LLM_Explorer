@@ -50,7 +50,7 @@ def knobs() -> tuple[Config, str, str | None]:
     eval_seeds = sb.slider("Seeds", 1, 10, 3)
     eval_episodes = sb.select_slider("Episodes per seed", [20, 50, 100], value=50)
     sb.caption("Brain (LLM)")
-    provider = sb.selectbox("Provider", list(PROVIDERS), index=list(PROVIDERS).index("groq"))
+    provider = sb.selectbox("Provider", list(PROVIDERS), index=list(PROVIDERS).index("claude"))
     model = sb.text_input("Model (blank = default)", "") or None
     threshold = sb.slider("Embedding strictness", 0.3, 0.95, 0.65, 0.05)
     cfg = Config(name="lab", grid_size=grid_size, hazard_count=hazard_count,
@@ -93,6 +93,33 @@ def show_skipped(skipped: dict) -> None:
 st.title("🧪 Semantic Osmosis Lab")
 st.write("Agent A learns from its deaths; an LLM turns them into rules; a new agent uses "
          "them on hot tiles it has **never seen** — without fearing harmless look-alikes.")
+
+with st.expander("ℹ️ What is this experiment? (read first)", expanded=False):
+    st.markdown("""
+**Question.** Agent A learns by trial and error (Q-learning) in rooms with a few *hot*
+tiles (red lava, campfire, hot coals). After 5 deaths, an LLM reads what happened and
+writes rules. A **new agent** then plays rooms with hot tiles **nobody has seen**
+(molten rock, burning logs, white-hot metal) and harmless **look-alikes** (red carpet,
+a painting of a fire). Can the rules protect it without making it afraid of the decoys?
+
+**Shields** decide "is the tile in front deadly?" and forbid stepping on it:
+
+| Shield | How it decides |
+|---|---|
+| S0 none | never blocks |
+| S1 lookup | did this exact tile kill the learner? |
+| S2 embedding | does its name look like a killer's name? |
+| S3 LLM prior | the LLM's common sense only |
+| S4 LLM + experience | the LLM with the learner's rules and log (**ours**) |
+| S6 oracle | knows the truth: the best possible score |
+
+**Measured so far** (10 seeds × 100 episodes): no shield 41% deaths · lookup 41% deaths
+(no help on new tiles) · oracle 0% deaths, 93% success. LLM results: pending.
+
+**How to use:** set the knobs on the left → tab 1 *Train* → tab 2 *Watch* an episode →
+tab 3 *Compare* shields → tab 4 *Sweep* a knob. LLM shields need an API key; the
+*fake* provider is a keyword matcher for testing only.
+""")
 
 cfg, provider, model = knobs()
 tab_train, tab_watch, tab_compare, tab_sweep = st.tabs(

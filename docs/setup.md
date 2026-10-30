@@ -75,16 +75,22 @@ domains** (environment menu in the session title bar → **Edit**).
 
 ## Hugging Face Space deployment
 
-Every push to `main` runs `.github/workflows/sync_hf.yml`, which deploys the v0 demo
-(`app.py`, `run_experiment.py`, `src/`, `requirements.txt`, `README.md`) to
-`huggingface.co/spaces/ashyou09/hybrid-rl-llm-explorer`.
+Every push to `main` runs `.github/workflows/sync_hf.yml`, which deploys **the Lab**
+(`lab.py`, `research/`, `configs/`, with `requirements-research.txt` installed as the
+Space's `requirements.txt`) to `huggingface.co/spaces/ashyou09/hybrid-rl-llm-explorer`.
+The Space is a Streamlit Space (`sdk: streamlit`, `app_file: lab.py` in the README header).
 
-It needs one GitHub secret:
+It needs one GitHub secret, `HF_TOKEN` (a Hugging Face token of type **Write**), under the
+repo's **Settings → Secrets and variables → Actions**.
 
-1. On huggingface.co: **Settings → Access Tokens → Create new token**, type **Write**.
-2. On GitHub: repo **Settings → Secrets and variables → Actions → New repository secret**,
-   name `HF_TOKEN`, value = the token.
-3. Re-run the latest "Sync to Hugging Face Hub" run from the **Actions** tab (or push to `main`).
+### LLM shields on the Space
 
-The Space uses Gradio (`sdk: gradio` in the README header). Research results (images,
-GIFs) are not deployed, because the Space rejects binary files that are not in Git LFS.
+To let visitors run the LLM shields on the Space, add the Claude key as a **Space secret**:
+Space **Settings → Variables and secrets → New secret**, name `ANTHROPIC_API_KEY`.
+Without it, the Lab still works and skips the LLM shields with a clear message.
+
+⚠️ A public Space lets anyone spend your key. Set a low monthly **spend limit** in the
+Anthropic console first. With Claude Haiku 5.5 each judgement costs a tiny fraction of a cent.
+
+Research results (images, GIFs) are not deployed, because the Space rejects binary files
+that are not in Git LFS. The v0 Gradio demo (`app.py`) is no longer deployed; it runs locally.

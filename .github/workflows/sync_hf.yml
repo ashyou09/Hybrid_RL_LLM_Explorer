@@ -1,9 +1,10 @@
 name: Sync to Hugging Face Hub
 
-# Deploys the v0 demo to the Hugging Face Space on every push to main.
+# Deploys the Lab (lab.py, Streamlit) to the Hugging Face Space on every push to main.
 # Only the files the Space needs are pushed (as a fresh snapshot), so research
 # results such as images and GIFs never reach the Space, which rejects binary
-# files that are not stored with Git LFS.
+# files that are not stored with Git LFS. The Space installs requirements.txt, so
+# the light research requirements are deployed under that name (no PyTorch).
 
 on:
   push:
@@ -28,13 +29,14 @@ jobs:
             exit 1
           fi
 
-      - name: Build a deploy snapshot with the demo files only
+      - name: Build a deploy snapshot with the Lab files only
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@users.noreply.github.com"
           git checkout --orphan hf-deploy
           git rm -r -q --cached .
-          git add README.md app.py run_experiment.py requirements.txt src .gitattributes
+          cp requirements-research.txt requirements.txt
+          git add README.md lab.py research configs requirements.txt .gitattributes
           git commit -q -m "Deploy ${GITHUB_SHA::7} from GitHub"
 
       - name: Push to Hugging Face

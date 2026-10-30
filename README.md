@@ -3,9 +3,9 @@ title: Hybrid RL-LLM Explorer
 emoji: 🧠
 colorFrom: red
 colorTo: yellow
-sdk: gradio
-sdk_version: "5.50.0"
-app_file: app.py
+sdk: streamlit
+sdk_version: "1.65.0"
+app_file: lab.py
 pinned: false
 ---
 
@@ -28,7 +28,7 @@ who then survive dangers nobody has ever seen.**
 [Tracker](future_plan/tracker.md) ·
 [Research idea](docs/research_idea.md) ·
 [Glossary](docs/glossary.md) ·
-[Live demo (v0)](https://huggingface.co/spaces/ashyou09/hybrid-rl-llm-explorer)
+[Live Lab](https://huggingface.co/spaces/ashyou09/hybrid-rl-llm-explorer)
 
 </div>
 
@@ -115,6 +115,9 @@ A browser panel to **watch** the agent and **turn knobs** like a scientist: numb
 hazards and decoys, how much the learner experienced, which LLM, how strict the
 matching is. Every episode is replayed with the shield's reasoning under each frame.
 
+**Online:** [huggingface.co/spaces/ashyou09/hybrid-rl-llm-explorer](https://huggingface.co/spaces/ashyou09/hybrid-rl-llm-explorer)
+· **Locally:**
+
 ```bash
 streamlit run lab.py
 ```
@@ -145,10 +148,10 @@ judgement is worth ~35 points of success. Details: [results/level_1/tables](resu
 ├── results/            curated figures and tables
 ├── configs/            experiment settings (all knobs)
 ├── tests/              automated tests (pytest)
-├── lab.py              the Lab panel (streamlit run lab.py)
+├── lab.py              the Lab panel (streamlit run lab.py) — runs on the Hugging Face Space
 ├── src/                v0 prototype code
 ├── run_experiment.py   v0 demo (desktop, Pygame)
-└── app.py              v0 demo (web, Gradio — used by the Hugging Face Space)
+└── app.py              v0 demo (web, Gradio)
 ```
 
 ## 🛠️ Tools
@@ -165,15 +168,12 @@ judgement is worth ~35 points of success. Details: [results/level_1/tables](resu
 
 Setup and API keys: [docs/setup.md](docs/setup.md)
 
-## 🚀 Try the v0 demo
+## 🚀 The v0 prototype (local only)
 
 The original prototype: an agent learns that red lava kills, a local LLM writes a
-rule, and a second run uses the rule to avoid lava in new layouts.
+rule, and a second run uses the rule to avoid lava in new layouts. The Hugging Face
+Space now runs the Lab instead; the prototype runs locally.
 How it works: [docs/legacy_demo.md](docs/legacy_demo.md).
-
-**Online:** [Hugging Face Space](https://huggingface.co/spaces/ashyou09/hybrid-rl-llm-explorer)
-
-**Locally:**
 
 ```bash
 pip install -r requirements.txt
@@ -185,7 +185,7 @@ Desktop version (opens a Pygame window with a settings screen):
 python run_experiment.py
 ```
 
-Web version (the same app as the Hugging Face Space; needs `pip install gradio==5.50.0`):
+Web version (needs `pip install gradio==5.50.0`):
 
 ```bash
 python app.py
