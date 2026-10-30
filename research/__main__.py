@@ -27,6 +27,7 @@ def cmd_config(args: argparse.Namespace) -> None:
 
 def cmd_train(args: argparse.Namespace) -> None:
     """Train Agent A, evaluate it with no shield on train and test worlds, save everything."""
+    from research import experience
     from research.env import TextGridEnv
     from research.qlearning import AgentPolicy
     from research.replay import record_episode, save_gif
@@ -41,6 +42,9 @@ def cmd_train(args: argparse.Namespace) -> None:
     agent.save(run_dir / "qtable.json")
     (run_dir / "history.json").write_text(json.dumps(history))
     plot_curve(history, run_dir / "learning_curve.png")
+    log = experience.build_log(history, cfg.experience_budget)
+    experience.save(log, run_dir / "experience_log.json")
+    print(f"Experience log ({cfg.experience_budget} deaths):\n{experience.to_text(log)}")
 
     metrics = {"train": evaluate(agent, cfg, "train"), "test": evaluate(agent, cfg, "test"),
                "q_states": len(agent.q)}
