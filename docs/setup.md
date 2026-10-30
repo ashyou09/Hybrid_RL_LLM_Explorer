@@ -16,9 +16,9 @@ them from environment variables.
 
 | Variable | Provider | Needed from |
 |---|---|---|
-| `GROQ_API_KEY` | Groq (free tier, open Llama models) — main | Level 1, step L1.7 |
-| `OPENROUTER_API_KEY` | OpenRouter (free models) — backup | optional |
-| `ANTHROPIC_API_KEY` | Claude Haiku 5.5 (cheapest Claude model) — used for the Level 1 runs | Level 1 |
+| `ANTHROPIC_API_KEY` | **Claude Haiku 5.5** (cheapest Claude model) — **main**, used for the Level 1 runs | Level 1 |
+| `GROQ_API_KEY` | Groq (free tier, open Llama models) — optional | Level 4 comparison |
+| `OPENROUTER_API_KEY` | OpenRouter (free models) — optional | Level 4 comparison |
 
 ### Claude cloud session
 
@@ -28,12 +28,12 @@ app version) with the variable name above. Start a new session to pick it up.
 
 ### Google Colab
 
-Left sidebar → 🔑 **Secrets** → add `GROQ_API_KEY`, then in the notebook:
+Left sidebar → 🔑 **Secrets** → add `ANTHROPIC_API_KEY`, then in the notebook:
 
 ```python
 import os
 from google.colab import userdata
-os.environ["GROQ_API_KEY"] = userdata.get("GROQ_API_KEY")
+os.environ["ANTHROPIC_API_KEY"] = userdata.get("ANTHROPIC_API_KEY")
 ```
 
 ### Local (optional)

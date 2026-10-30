@@ -11,7 +11,7 @@
 | 2026-10-30 | RL body: tabular Q-learning with action masking (shield). |
 | 2026-10-30 | Environment: MiniGrid + natural-language text layer. |
 | 2026-10-30 | Danger design: hidden categories, held-out tiles, decoys. |
-| 2026-10-30 | LLM providers: Groq (free), OpenRouter (free), Claude API. |
+| 2026-10-30 | LLM providers supported: Groq (free), OpenRouter (free), Claude API, Ollama. |
 | 2026-10-30 | Keep the old demo; build research code separately. |
 | 2026-10-30 | Work in 6 levels, smallest first; Level 1 in full detail, later levels expanded at handover. |
 | 2026-10-30 | Each level is written up in `conclusion/level_N/` as paper.md + explained.md. |
@@ -20,7 +20,7 @@
 | 2026-10-30 | Level 1 tile set (heat category) accepted. |
 | 2026-10-30 | Add a visual Lab: knob config, episode replays, sweeps, Streamlit panel. |
 | 2026-10-30 | Build order: foundations first (L1.1 → L1.15). |
-| 2026-10-30 | LLM: open-weight Llama models via Groq free tier (Ollama for offline); OpenRouter backup; Claude as reference. |
+| 2026-10-30 | ~~LLM: open-weight Llama via Groq as main~~ (superseded below: the cloud session cannot reach Groq). |
 | 2026-10-30 | Run in the cloud (cloud session / Colab / HF Space); laptop needs only a browser. |
 
 | 2026-10-30 | Level 1 LLM runs use Claude Haiku 5.5 (`claude-haiku-5-5`), the cheapest Claude model, effort low. Haiku 4.5 and Groq/OpenRouter remain supported via --model / --provider. |

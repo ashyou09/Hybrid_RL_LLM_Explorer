@@ -177,11 +177,12 @@ false-avoidance, steps to goal, LLM calls.
 
 ### 1.10 Tools and where to run
 
-- **LLM:** open-weight models first, so anyone can reproduce the results.
-  - **Main:** Llama-family open models through **Groq's free tier** (fast; free key).
-    The same models can run offline with **Ollama** for people who prefer local.
-  - **Backup:** OpenRouter free models.
-  - **Reference "big brain":** Claude, used sparingly (cached answers cost cents) — mainly in Level 4's model comparison.
+- **LLM (decided 2026-10-30):** **Claude Haiku 5.5** (`claude-haiku-5-5`), the cheapest
+  Claude model, at low effort. It is reachable from the cloud session without network
+  changes, and a full Level 1 run costs well under one cent (answers are cached).
+  - **Also supported:** Claude Haiku 4.5 (`--model claude-haiku-4-5`); open-weight Llama
+    models via Groq or OpenRouter (`--provider groq|openrouter`) or offline via Ollama.
+    These matter for Level 4's model comparison.
 - **Machine:** nothing heavy runs locally. Tabular Q-learning needs no GPU, and the
   LLM runs on the API. Develop and run in a cloud session or Google Colab; host the
   Lab panel on the existing Hugging Face Space. The laptop only needs a browser.

@@ -79,7 +79,7 @@ training rooms and dies in only 0.4%. It learned to avoid red lava and hot coals
 |---|---|---|
 | L1-H1: lookup won't help on new tiles | **Confirmed.** Lookup = no shield, to the decimal | It only knows tiles that killed the learner, and none of those appear in tests |
 | A good shield would help a lot | **Confirmed.** The oracle removes every death and adds 35 points of success | So the size of the prize for S3/S4 is known: somewhere between 57% and 93% success |
-| L1-H2 to H4 (about the LLM and embeddings) | **Not measured yet** | Needs an LLM key and a network that can reach the provider |
+| L1-H2 to H4 (about the LLM and embeddings) | **Not measured yet** | Needs the Claude API key in a new session (then one command each) |
 
 **Harder rooms:** with more hot tiles, deaths without a shield climb from 16% (1 hot tile)
 to 75% (6 hot tiles); the oracle stays at 0% throughout.
@@ -95,9 +95,9 @@ to 75% (6 hot tiles); the oracle stays at 0% throughout.
   partial — a realistic situation for the LLM to deal with.
 - **A blocked agent can still get stuck.** With the oracle, 7.4% of episodes time out:
   when the way forward is blocked, the simple learner sometimes circles.
-- **Network limits.** This cloud session cannot reach Groq, OpenRouter or Hugging Face,
-  so the LLM and embedding runs must happen elsewhere (laptop, Colab) or after the
-  session's network settings are changed.
+- **Network limits.** This cloud session cannot reach Groq, OpenRouter or Hugging Face.
+  So we use Claude Haiku 5.5 (reachable, cheapest Claude model) for the LLM runs, and the
+  embedding shield (needs Hugging Face) must run on a laptop or Colab.
 - **The fake keyword LLM** (used only to test the plumbing) blocked the "painting of a
   fire" decoy. That shows why decoys matter: matching words is not understanding.
 

@@ -134,7 +134,7 @@ policy was never trained with masked actions; a shield-aware learner is future w
   hot") may suffice without experience — this is what Level 2 tests.
 - Tabular learner with a goal compass; local perception only.
 - Decoys and categories are hand-designed.
-- **[PENDING]** Model dependence: results for one or more LLMs.
+- **[PENDING]** Model dependence: Level 1 uses one model (Claude Haiku 5.5); other models are compared in Level 4.
 
 ## 8. Conclusion
 
@@ -158,14 +158,14 @@ python -m research evaluate --shields none,lookup,oracle
 python -m research sweep --knob hazard_count --values 1,2,4,6 --shields none,lookup,oracle
 ```
 
-LLM shields (needs a key in the environment or `.env`, and network access to the provider):
+LLM shields (Claude Haiku 5.5 by default; needs `ANTHROPIC_API_KEY` in the environment or `.env`):
 
 ```bash
-python -m research classify --provider groq
+python -m research classify
 ```
 
 ```bash
-python -m research evaluate --provider groq
+python -m research evaluate
 ```
 
 Embedding shield (needs `pip install sentence-transformers` and access to huggingface.co):
